@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">SuperVilla logo</title>
+  <desc id="desc">Stylized navy and gold real estate emblem with a triangular roof, villas, and a wave.</desc>
+  <defs>
+    <linearGradient id="navyMain" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#123a66" />
+      <stop offset="48%" stop-color="#0b2745" />
+      <stop offset="100%" stop-color="#07192d" />
+    </linearGradient>
+    <linearGradient id="navyWave" x1="0%" y1="20%" x2="100%" y2="80%">
+      <stop offset="0%" stop-color="#144d89" />
+      <stop offset="55%" stop-color="#0e3c6d" />
+      <stop offset="100%" stop-color="#082645" />
+    </linearGradient>
+    <linearGradient id="goldGlow" x1="15%" y1="10%" x2="80%" y2="90%">
+      <stop offset="0%" stop-color="#fff0ad" />
+      <stop offset="45%" stop-color="#f6d96b" />
+      <stop offset="100%" stop-color="#c89a2f" />
+    </linearGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g fill="none" fill-rule="evenodd">
+    <path
+      fill="url(#navyMain)"
+      d="M256 46l159 297h-49c-11-26-35-47-79-58-40-10-81-8-123 8-24 10-45 24-64 42H53l92-165c19-34 41-75 66-124l45 0z"
+    />
+    <path
+      fill="url(#goldGlow)"
+      filter="url(#softGlow)"
+      d="M262 112l104 149-83-59-70 92 44-111 31-71z"
+    />
+    <path
+      fill="#081d34"
+      d="M268 179l76 79-38-23-17 17-33-23-88 81c15-33 35-67 60-101l40-30z"
+      opacity=".88"
+    />
+
+    <g transform="translate(176 233)">
+      <path fill="#0a2340" d="M0 74l42-45 55 29v45H0z" />
+      <path fill="url(#goldGlow)" d="M14 29l29-24 55 42H69L43 24 18 45H0z" />
+      <rect width="11" height="19" x="20" y="40" fill="#ffefaa" rx="1.5" />
+      <rect width="11" height="19" x="36" y="40" fill="#ffefaa" rx="1.5" />
+      <rect width="11" height="17" x="60" y="43" fill="#ffefaa" rx="1.5" />
+      <rect width="11" height="17" x="76" y="43" fill="#ffefaa" rx="1.5" />
+    </g>
+
+    <g transform="translate(232 208)">
+      <path fill="#0a2340" d="M0 75l33-36 42 21v54H0z" />
+      <path fill="url(#goldGlow)" d="M12 37l21-19 41 30H52L33 31 13 47H0z" />
+      <rect width="10" height="18" x="18" y="49" fill="#ffefaa" rx="1.5" />
+      <rect width="10" height="18" x="34" y="49" fill="#ffefaa" rx="1.5" />
+    </g>
+
+    <g transform="translate(295 214)">
+      <path fill="#0a2340" d="M0 73l26-29 53 26v47H0z" />
+      <path fill="url(#goldGlow)" d="M13 40l14-19 52 31H58L27 34 13 52H0z" />
+      <rect width="9" height="17" x="18" y="48" fill="#ffefaa" rx="1.5" />
+      <rect width="9" height="17" x="34" y="48" fill="#ffefaa" rx="1.5" />
+      <rect width="9" height="17" x="58" y="48" fill="#ffefaa" rx="1.5" />
+    </g>
+
+    <path
+      fill="url(#goldGlow)"
+      d="M318 286c54 5 95 29 123 72-19-13-38-20-59-21-49-2-91 15-129 52l-8-3c20-43 45-76 73-100z"
+      opacity=".96"
+    />
+    <path
+      fill="url(#navyWave)"
+      d="M124 302c50 24 97 33 142 28 27-3 57-12 91-26 76-31 139-23 188 24-50-22-98-24-143-7-21 8-43 20-64 36-56 42-124 59-206 49-36-4-78-16-126-36 48 8 85 8 112 0 40-11 65-33 77-68l20 0c-4 18-11 34-20 49 31 0 64-5 98-15-24 20-51 34-82 42-32 8-59 10-82 5-22-4-57-17-105-39z"
+    />
+    <path
+      fill="#2b79b9"
+      d="M140 295c66 18 120 19 161 3 17-6 44-19 82-38 62-31 115-28 159 10-47-13-90-10-128 8-20 10-42 24-65 43-45 36-96 57-154 61-53 4-118-11-194-44 60 13 106 18 139 14z"
+      opacity=".9"
+    />
+
+    <path
+      fill="#07192d"
+      d="M96 386h111c-14-8-26-22-37-40l-11 0c-13 17-34 30-63 40zm185 0h136c14-8 24-25 29-51 6-31-1-59-21-85 19 11 33 25 43 43 14 26 18 57 11 93H281z"
+    />
+  </g>
+</svg>

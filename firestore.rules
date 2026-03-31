@@ -1,0 +1,459 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    function hasSubscription(userId) {
+      return exists(/databases/$(database)/documents/user_subscriptions/$(userId));
+    }
+
+    function subscriptionPlanId(userId) {
+      return hasSubscription(userId)
+        ? get(/databases/$(database)/documents/user_subscriptions/$(userId)).data.planId
+        : "free";
+    }
+
+    function subscriptionStatus(userId) {
+      return hasSubscription(userId)
+        ? get(/databases/$(database)/documents/user_subscriptions/$(userId)).data.status
+        : "inactive";
+    }
+
+    function hasBasicAnalyticsAccess(userId) {
+      return isOwner(userId)
+        && subscriptionStatus(userId) == "active"
+        && (
+          subscriptionPlanId(userId) == "premium"
+          || subscriptionPlanId(userId) == "business-pro"
+        );
+    }
+
+    function hasBusinessAnalyticsAccess(userId) {
+      return isOwner(userId)
+        && subscriptionStatus(userId) == "active"
+        && subscriptionPlanId(userId) == "business-pro";
+    }
+
+    function authEmail() {
+      return request.auth.token.email != null
+        ? request.auth.token.email
+        : "";
+    }
+
+    function authEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function hasOnlyAllowedUserFields(data) {
+      return data.keys().hasOnly([
+        "uid",
+        "name",
+        "email",
+        "role",
+        "emailVerified",
+        "phone",
+        "address",
+        "favorites",
+        "photoURL",
+        "provider",
+        "createdAt",
+        "lastLoginAt",
+        "updatedAt"
+      ]);
+    }
+
+    function isValidUserRole(role) {
+      return role == "user" || role == "admin";
+    }
+
+    function hasValidUserShape(data) {
+      return hasOnlyAllowedUserFields(data)
+        && data.name is string
+        && data.email is string
+        && data.phone is string
+        && data.address is string
+        && data.role is string
+        && isValidUserRole(data.role)
+        && data.emailVerified is bool
+        && data.favorites is list
+        && (!("uid" in data) || data.uid is string)
+        && (!("photoURL" in data) || data.photoURL is string)
+        && (!("provider" in data) || data.provider is string)
+        && (!("createdAt" in data) || data.createdAt is timestamp)
+        && (!("lastLoginAt" in data) || data.lastLoginAt is timestamp)
+        && (!("updatedAt" in data) || data.updatedAt is timestamp);
+    }
+
+    function isSafeOwnerUserCreate(userId) {
+      return isOwner(userId)
+        && hasValidUserShape(request.resource.data)
+        && request.resource.data.role == "user"
+        && request.resource.data.email == authEmail()
+        && request.resource.data.emailVerified == authEmailVerified()
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.lastLoginAt is timestamp;
+    }
+
+    function isSafeOwnerUserUpdate(userId) {
+      return isOwner(userId)
+        && hasValidUserShape(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "name",
+          "phone",
+          "address",
+          "favorites",
+          "email",
+          "emailVerified",
+          "photoURL",
+          "provider",
+          "lastLoginAt",
+          "updatedAt"
+        ])
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.email == authEmail()
+        && request.resource.data.emailVerified == authEmailVerified();
+    }
+
+    function isSafeAdminUserUpdate() {
+      return isAdmin()
+        && hasValidUserShape(request.resource.data);
+    }
+
+    function hasValidListingShape(data) {
+      return data.title is string
+        && data.description is string
+        && data.location is string
+        && data.image is string
+        && data.category is string
+        && data.author is string
+        && data.createdByUid is string
+        && data.price is number
+        && data.beds is number
+        && data.baths is number
+        && data.area is number
+        && data.guests is number
+        && data.price > 0
+        && data.beds > 0
+        && data.baths > 0
+        && data.area > 0
+        && data.guests > 0;
+    }
+
+    match /users/{userId} {
+      allow create: if isSafeOwnerUserCreate(userId);
+      allow read: if isOwner(userId) || isAdmin();
+      allow update: if isSafeOwnerUserUpdate(userId) || isSafeAdminUserUpdate();
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId}/savedListings/{listingId} {
+      allow read, create, update, delete: if isOwner(userId);
+    }
+
+    // ─── Listings (legacy — creation blocked for non-admin) ───────────
+    // Old listings remain readable for backward compatibility.
+    // New listings must go through the moderated posts_private → posts_public flow.
+    match /listings/{listingId} {
+      allow read: if true;
+      allow create: if isAdmin()
+        && hasValidListingShape(request.resource.data);
+      allow update, delete: if isSignedIn()
+        && (
+          resource.data.createdByUid == request.auth.uid
+          || isAdmin()
+        );
+    }
+
+    // ─── Posts moderation system ───────────────────────────────────
+
+    // Allowed fields for owner update on posts_private.
+    // Owner can edit content fields but NOT system/admin fields.
+    function isAllowedOwnerPostUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        // Content fields
+        "title", "description", "location", "category",
+        "image", "images",
+        "price", "rooms", "beds", "baths", "guests", "area",
+        "whatsapp", "features", "companyName",
+        // Location/geo fields
+        "lat", "lng", "address", "city", "country",
+        "placeId", "placeName", "street", "postalCode", "placeType",
+        // Moderation reset fields (must be set to safe values — checked separately)
+        "status", "statusBadge", "sortOrder",
+        "updatedAt", "approvedAt", "approvedBy"
+      ]);
+    }
+
+    // posts_private: user can create own post (must be pending),
+    // user can read own posts, admin can read/write all
+    match /posts_private/{postId} {
+      allow read: if isSignedIn()
+        && (resource.data.ownerUid == request.auth.uid || isAdmin());
+
+      // User creates post: must set ownerUid to self, status=pending, sortOrder=null
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.statusBadge == "Wait to confirm"
+        && request.resource.data.sortOrder == null
+        && request.resource.data.title is string
+        && request.resource.data.image is string;
+
+      // Owner can update own post (must reset to pending + whitelist enforced),
+      // admin can update any field
+      allow update: if isAdmin()
+        || (isSignedIn()
+            && resource.data.ownerUid == request.auth.uid
+            && request.resource.data.ownerUid == resource.data.ownerUid
+            && request.resource.data.status == "pending"
+            && request.resource.data.statusBadge == "Wait to confirm"
+            && request.resource.data.sortOrder == null
+            && isAllowedOwnerPostUpdate());
+
+      // Owner can delete own post, admin can delete any
+      allow delete: if isAdmin()
+        || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    // posts_public: anyone can read, admin can write, owner can delete own
+    match /posts_public/{postId} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin()
+        || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    // counters: only admin can read/write to prevent ID manipulation
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Reviews ───────────────────────────────────────────────────
+
+    match /reviews/{reviewId} {
+      // Anyone can read reviews (public)
+      allow read: if true;
+
+      // Only authenticated users can create a review
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.listingId is string
+        && request.resource.data.listingId.size() > 0
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() > 0
+        && request.resource.data.comment.size() <= 1000
+        && request.resource.data.userName is string
+        && request.resource.data.keys().hasOnly([
+          "listingId", "userId", "userName", "userPhoto",
+          "rating", "comment", "createdAt"
+        ]);
+
+      // Only admin can update or delete reviews (moderation)
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── Conversations (chat system) ──────────────────────────────
+
+    function isAllowedPaymentPlan(planId) {
+      return planId == "premium" || planId == "business-pro";
+    }
+
+    function isAllowedPaymentMethod(method) {
+      return method == "bank" || method == "crypto";
+    }
+
+    function hasValidPaymentSubmissionShape(data) {
+      return data.keys().hasOnly([
+          "customerName",
+          "email",
+          "phone",
+          "planId",
+          "paymentMethod",
+          "paymentReference",
+          "notes",
+          "paymentStatus",
+          "source",
+          "userId",
+          "proofStoragePath",
+          "proofFileName",
+          "proofOriginalName",
+          "proofContentType",
+          "proofSize",
+          "createdAt"
+        ])
+        && data.customerName is string
+        && data.customerName.size() >= 2
+        && data.customerName.size() <= 120
+        && data.email is string
+        && data.email.size() >= 5
+        && data.email.size() <= 160
+        && data.phone is string
+        && data.phone.size() >= 6
+        && data.phone.size() <= 40
+        && data.planId is string
+        && isAllowedPaymentPlan(data.planId)
+        && data.paymentMethod is string
+        && isAllowedPaymentMethod(data.paymentMethod)
+        && data.paymentReference is string
+        && data.paymentReference.size() >= 6
+        && data.paymentReference.size() <= 80
+        && data.notes is string
+        && data.notes.size() <= 1200
+        && data.paymentStatus == "pending_verification"
+        && data.source == "pricing_section"
+        && data.userId is string
+        && data.proofStoragePath is string
+        && data.proofStoragePath.size() > 0
+        && data.proofStoragePath.size() <= 500
+        && data.proofFileName is string
+        && data.proofFileName.size() > 0
+        && data.proofFileName.size() <= 180
+        && data.proofOriginalName is string
+        && data.proofOriginalName.size() > 0
+        && data.proofOriginalName.size() <= 240
+        && data.proofContentType is string
+        && (
+          data.proofContentType.matches('image/.*')
+          || data.proofContentType == "application/pdf"
+        )
+        && data.proofSize is int
+        && data.proofSize > 0
+        && data.proofSize < 8 * 1024 * 1024
+        && data.createdAt is timestamp;
+    }
+
+    match /payment_submissions/{submissionId} {
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /paid_plan_audits/{auditId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.recipientUserId == request.auth.uid);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (
+          isSignedIn()
+          && resource.data.recipientUserId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status",
+            "readAt"
+          ])
+        );
+    }
+
+    match /user_subscriptions/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /owner_analytics/{userId} {
+      allow read: if hasBasicAnalyticsAccess(userId) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /owner_analytics_details/{userId} {
+      allow read: if hasBusinessAnalyticsAccess(userId) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /listing_stats/{listingId} {
+      allow read: if (
+        isSignedIn()
+        && hasBasicAnalyticsAccess(resource.data.ownerUserId)
+      ) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /listing_daily_stats/{docId} {
+      allow read: if (
+        isSignedIn()
+        && hasBasicAnalyticsAccess(resource.data.ownerUserId)
+      ) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /listing_monthly_stats/{docId} {
+      allow read: if (
+        isSignedIn()
+        && hasBasicAnalyticsAccess(resource.data.ownerUserId)
+      ) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /listing_events/{eventId} {
+      allow read: if (
+        isSignedIn()
+        && hasBusinessAnalyticsAccess(resource.data.ownerUserId)
+      ) || isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /leads/{leadId} {
+      allow read: if (
+        isSignedIn()
+        && hasBusinessAnalyticsAccess(resource.data.ownerUserId)
+      ) || isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /analytics_dedupe/{dedupeId} {
+      allow read, write: if false;
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2;
+
+      // Participants can only update chat operational fields.
+      // Cannot change participants, participantNames, listingId, listingTitle, createdAt.
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.participants
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "lastMessage", "lastMessageAt", "unreadCounts"
+        ])
+        && request.resource.data.participants == resource.data.participants;
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+
+        allow create: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string;
+
+        allow update, delete: if false;
+      }
+    }
+
+  }
+}

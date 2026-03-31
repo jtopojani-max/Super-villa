@@ -1,0 +1,44 @@
+import { getExperienceConfig } from "../config/experiences.js";
+import { inferCategory } from "./smartSearch.js";
+import { toSlug } from "./slug.js";
+
+const APARTMENT_CATEGORY_ALIASES = new Set([
+  "apartament",
+  "apartment",
+  "studio",
+  "penthouse",
+  "duplex",
+  "loft",
+]);
+
+const normalizeCategory = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+export const normalizeExperience = (value = "villas") =>
+  value === "apartments" ? "apartments" : "villas";
+
+export const getListingExperience = (listing) => {
+  const category = normalizeCategory(listing?.category || inferCategory(listing));
+  return APARTMENT_CATEGORY_ALIASES.has(category) ? "apartments" : "villas";
+};
+
+export const filterListingsByExperience = (listings = [], experience = "villas") =>
+  listings.filter((listing) => getListingExperience(listing) === normalizeExperience(experience));
+
+export const getExperienceHomePath = (experience = "villas") => {
+  const resolved = normalizeExperience(experience);
+  return resolved === "apartments" ? "/?mode=apartments" : "/";
+};
+
+export const getExperienceCatalogPath = (experience = "villas") =>
+  getExperienceConfig(normalizeExperience(experience)).route;
+
+export const getExperienceDetailPath = (experience = "villas", listingId = "", title = "") => {
+  const config = getExperienceConfig(normalizeExperience(experience));
+  const slug = toSlug(title);
+  return slug
+    ? `${config.detailBasePath}/${listingId}/${slug}`
+    : `${config.detailBasePath}/${listingId}`;
+};
