@@ -4,6 +4,7 @@ import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -11,6 +12,21 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   shadowUrl: markerShadow,
 });
+
+const COPY = {
+  sq: {
+    label: "Vendndodhja ne harte (opsionale)",
+    placeholder: "Kerko adresen... p.sh. Rruga Fehmi Agani, Prishtine",
+    clear: "Pastro",
+    hint: "Terhiq shenjuesin ose kliko harten per ta saktesuar pozicionin.",
+  },
+  en: {
+    label: "Map location (optional)",
+    placeholder: "Search the address... e.g. Fehmi Agani Street, Prishtina",
+    clear: "Clear",
+    hint: "Drag the marker or click the map to fine-tune the position.",
+  },
+};
 
 const goldIcon = L.divIcon({
   className: "property-map__pin",
@@ -20,13 +36,12 @@ const goldIcon = L.divIcon({
   popupAnchor: [0, -44],
 });
 
-// Search Nominatim API — filtered to Kosovo (xk) and Albania (al)
 async function nominatimSearch(query) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Kosovë")}&limit=6&addressdetails=1&countrycodes=xk,al,mk,rs&accept-language=sq,en`;
-  const res = await fetch(url, {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(`${query}, Kosove`)}&limit=6&addressdetails=1&countrycodes=xk,al,mk,rs&accept-language=sq,en`;
+  const response = await fetch(url, {
     headers: { "User-Agent": "SuperVilla/1.0" },
   });
-  return res.json();
+  return response.json();
 }
 
 function RecenterMap({ lat, lng }) {
@@ -49,54 +64,52 @@ function DraggableMarker({ position, onDragEnd }) {
     },
   }), [onDragEnd]);
 
-  return (
-    <Marker
-      draggable
-      eventHandlers={eventHandlers}
-      position={position}
-      ref={markerRef}
-      icon={goldIcon}
-    />
-  );
+  return <Marker draggable eventHandlers={eventHandlers} position={position} ref={markerRef} icon={goldIcon} />;
 }
 
 function MapClickHandler({ onClick }) {
-  useMapEvents({ click(e) { onClick(e.latlng.lat, e.latlng.lng); } });
+  useMapEvents({
+    click(event) {
+      onClick(event.latlng.lat, event.latlng.lng);
+    },
+  });
   return null;
 }
 
 export default function LocationPicker({ value, onChange }) {
-  // value = { address, lat, lng }
-  // onChange({ address, lat, lng })
+  const { lang } = useLanguage();
+  const copy = COPY[lang] || COPY.sq;
   const [query, setQuery] = useState(value?.address || "");
   const [suggestions, setSuggestions] = useState([]);
   const [searching, setSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef(null);
   const wrapperRef = useRef(null);
-
   const hasLocation = value?.lat && value?.lng;
 
-  // Debounced search
   useEffect(() => {
     clearTimeout(debounceRef.current);
-    if (query.trim().length < 3) { setSuggestions([]); return; }
+    if (query.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const results = await nominatimSearch(query);
-        setSuggestions(results);
+        setSuggestions(await nominatimSearch(query));
         setShowSuggestions(true);
-      } catch { setSuggestions([]); }
-      finally { setSearching(false); }
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
+      }
     }, 450);
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
-  // Close dropdown on outside click
   useEffect(() => {
-    const handler = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+    const handler = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShowSuggestions(false);
       }
     };
@@ -132,47 +145,43 @@ export default function LocationPicker({ value, onChange }) {
 
   return (
     <div className="location-picker form-group form-group--full" ref={wrapperRef}>
-      <label>Vendndodhja në hartë (opsionale)</label>
+      <label>{copy.label}</label>
 
-      {/* Search input */}
       <div className="location-picker__search">
         <input
           className="location-picker__input"
           type="text"
-          placeholder="Kërko adresën... p.sh. Rruga Fehmi Agani, Prishtinë"
+          placeholder={copy.placeholder}
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setShowSuggestions(true);
+          }}
           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           autoComplete="off"
         />
         {searching && <span className="location-picker__spinner" />}
         {(query || hasLocation) && (
-          <button type="button" className="location-picker__clear" onClick={clearLocation} title="Pastro">✕</button>
+          <button type="button" className="location-picker__clear" onClick={clearLocation} title={copy.clear}>
+            x
+          </button>
         )}
       </div>
 
-      {/* Suggestions dropdown */}
       {showSuggestions && suggestions.length > 0 && (
         <ul className="location-picker__suggestions">
           {suggestions.map((item) => (
-            <li
-              key={item.place_id}
-              className="location-picker__suggestion"
-              onMouseDown={() => selectSuggestion(item)}
-            >
-              <span className="location-picker__suggestion-icon">📍</span>
+            <li key={item.place_id} className="location-picker__suggestion" onMouseDown={() => selectSuggestion(item)}>
+              <span className="location-picker__suggestion-icon">Map</span>
               <span>{item.display_name}</span>
             </li>
           ))}
         </ul>
       )}
 
-      {/* Map preview */}
       {hasLocation && (
         <div className="location-picker__map">
-          <p className="location-picker__hint">
-            Tërhiq shenjuesin ose kliko hartën për ta saktësuar pozicionin.
-          </p>
+          <p className="location-picker__hint">{copy.hint}</p>
           <div className="location-picker__map-container">
             <MapContainer
               center={[value.lat, value.lng]}
@@ -188,7 +197,7 @@ export default function LocationPicker({ value, onChange }) {
             </MapContainer>
           </div>
           <p className="location-picker__coords">
-            📌 {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
+            {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
           </p>
         </div>
       )}

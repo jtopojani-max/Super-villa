@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  CheckCircle,
-  ClockCounterClockwise,
-  DownloadSimple,
-  Eye,
-  Prohibit,
-  ShieldCheck,
-  WarningCircle,
-  XCircle,
-} from "@phosphor-icons/react";
+import { Icon } from "./Shared.jsx";
 import {
   getPaymentProofDownloadUrl,
   listAdminPaidPlanRequests,
@@ -68,6 +59,7 @@ export default function PaidPlansAdminPanel() {
     setState((current) => ({ ...current, loading: true, error: "" }));
     try {
       const requests = await listAdminPaidPlanRequests();
+      console.log("[PaidPlansAdmin] Loaded requests:", requests.length, requests);
       setState({ loading: false, error: "", requests });
     } catch (error) {
       console.error("Failed to load paid plan requests:", error);
@@ -217,7 +209,7 @@ export default function PaidPlansAdminPanel() {
       <div className="paid-plans-admin__stats">
         <article className="admin-stat-card">
           <p className="admin-stat-card__label">Kerkesa ne pritje</p>
-          <p className="admin-stat-card__val" style={{ color: "#d97706" }}>{summary.pending}</p>
+          <p className="admin-stat-card__val warning">{summary.pending}</p>
         </article>
         <article className="admin-stat-card">
           <p className="admin-stat-card__label">Plane aktive</p>
@@ -326,7 +318,7 @@ export default function PaidPlansAdminPanel() {
               </span>
               <span className="paid-plans-row__actions">
                 <button type="button" className="btn btn--ghost" onClick={() => setSelectedRequest(request)}>
-                  <Eye aria-hidden="true" /> Detajet
+                  <Icon n="eye" /> Detajet
                 </button>
               </span>
             </div>
@@ -347,7 +339,7 @@ export default function PaidPlansAdminPanel() {
                 </span>
               </div>
               <button type="button" className="pricing-modal__close" onClick={() => setSelectedRequest(null)}>
-                x
+                <span className="ui-close-mark" aria-hidden="true">X</span>
               </button>
             </div>
 
@@ -369,7 +361,7 @@ export default function PaidPlansAdminPanel() {
 
               <div className="paid-plan-admin-modal__proof">
                 <div className="paid-plan-admin-modal__subhead">
-                  <ShieldCheck aria-hidden="true" />
+                  <Icon n="shield-check" />
                   <strong>Deshmia e pageses</strong>
                 </div>
                 {detailLoading ? (
@@ -377,7 +369,7 @@ export default function PaidPlansAdminPanel() {
                 ) : proofUrl ? (
                   <>
                     {selectedRequest.proofContentType?.startsWith("image/") ? (
-                      <img src={proofUrl} alt="Proof" className="paid-plan-admin-modal__proof-image" />
+                      <img src={proofUrl} alt="Prove e pageses se ngarkuar nga perdoruesi" className="paid-plan-admin-modal__proof-image" />
                     ) : (
                       <div className="paid-plan-admin-modal__proof-file">
                         <strong>{selectedRequest.proofOriginalName || selectedRequest.proofFileName}</strong>
@@ -385,7 +377,7 @@ export default function PaidPlansAdminPanel() {
                       </div>
                     )}
                     <a className="btn btn--ghost" href={proofUrl} target="_blank" rel="noreferrer">
-                      <DownloadSimple aria-hidden="true" /> Hap / Shkarko
+                      <Icon n="download" /> Hap / Shkarko
                     </a>
                   </>
                 ) : (
@@ -418,7 +410,7 @@ export default function PaidPlansAdminPanel() {
 
               {actionError && (
                 <div className="paid-plan-admin-modal__error">
-                  <WarningCircle aria-hidden="true" />
+                  <Icon n="alert-circle" />
                   <span>{actionError}</span>
                 </div>
               )}
@@ -427,29 +419,29 @@ export default function PaidPlansAdminPanel() {
                 {selectedRequest.paymentStatus === "pending" && (
                   <>
                     <button type="button" className="btn btn--success" disabled={actionLoading !== ""} onClick={() => handleAction("approve")}>
-                      <CheckCircle aria-hidden="true" /> {actionLoading === "approve" ? "Duke aprovuar..." : "Approve"}
+                      <Icon n="check-circle" /> {actionLoading === "approve" ? "Duke aprovuar..." : "Approve"}
                     </button>
                     <button type="button" className="btn btn--danger" disabled={actionLoading !== ""} onClick={() => handleAction("reject")}>
-                      <XCircle aria-hidden="true" /> {actionLoading === "reject" ? "Duke refuzuar..." : "Reject"}
+                      <Icon n="close-circle" /> {actionLoading === "reject" ? "Duke refuzuar..." : "Reject"}
                     </button>
                   </>
                 )}
                 {selectedRequest.paymentStatus === "approved" && (
                   <>
                     <button type="button" className="btn btn--primary" disabled={actionLoading !== ""} onClick={() => handleAction("extend")}>
-                      <ClockCounterClockwise aria-hidden="true" /> {actionLoading === "extend" ? "Duke zgjatur..." : "Extend"}
+                      <Icon n="clock" /> {actionLoading === "extend" ? "Duke zgjatur..." : "Extend"}
                     </button>
                     <button type="button" className="btn btn--ghost" disabled={actionLoading !== ""} onClick={() => handleAction("mark_expired")}>
-                      <WarningCircle aria-hidden="true" /> Mark as expired
+                      <Icon n="alert-circle" /> Mark as expired
                     </button>
                     <button type="button" className="btn btn--danger" disabled={actionLoading !== ""} onClick={() => handleAction("deactivate")}>
-                      <Prohibit aria-hidden="true" /> Deactivate
+                      <Icon n="ban" /> Deactivate
                     </button>
                   </>
                 )}
                 {(selectedRequest.paymentStatus === "expired" || selectedRequest.paymentStatus === "cancelled" || selectedRequest.paymentStatus === "rejected") && (
                   <button type="button" className="btn btn--primary" disabled={actionLoading !== ""} onClick={() => handleAction("renew")}>
-                    <ShieldCheck aria-hidden="true" /> {actionLoading === "renew" ? "Duke rinovuar..." : "Renew"}
+                    <Icon n="shield-check" /> {actionLoading === "renew" ? "Duke rinovuar..." : "Renew"}
                   </button>
                 )}
                 <button type="button" className="btn btn--ghost" disabled={actionLoading !== ""} onClick={() => handleAction("note")}>
@@ -459,7 +451,7 @@ export default function PaidPlansAdminPanel() {
 
               <div className="paid-plan-admin-modal__audit">
                 <div className="paid-plan-admin-modal__subhead">
-                  <ClockCounterClockwise aria-hidden="true" />
+                  <Icon n="history" />
                   <strong>Audit log</strong>
                 </div>
                 {!auditEntries.length ? (

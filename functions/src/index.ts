@@ -71,6 +71,49 @@ function normalizePremiumOrder(value: unknown): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+const FREE_PLAN_MAX_LISTINGS = 1;
+
+// ─── Helper: check user's active subscription plan ──────────────────
+async function getUserActivePlanId(uid: string): Promise<string> {
+  try {
+    const subSnap = await db.doc(`user_subscriptions/${uid}`).get();
+    if (subSnap.exists) {
+      const data = subSnap.data()!;
+      const status = data.status;
+      const expiresAt = data.expiresAt ? (data.expiresAt.toDate?.() ?? new Date(data.expiresAt)) : null;
+      const isExpired = expiresAt ? expiresAt.getTime() <= Date.now() : false;
+      if (status === "active" && !isExpired && (data.planId === "premium" || data.planId === "business-pro")) {
+        return data.planId;
+      }
+    }
+  } catch (_) {
+    // fall through to payment_submissions check
+  }
+
+  try {
+    const now = Date.now();
+    const paymentsSnap = await db
+      .collection("payment_submissions")
+      .where("userId", "==", uid)
+      .where("paymentStatus", "==", "approved")
+      .get();
+
+    for (const doc of paymentsSnap.docs) {
+      const d = doc.data();
+      const expiresAt = d.expiresAt ? (d.expiresAt.toDate?.() ?? new Date(d.expiresAt)) : null;
+      if (!expiresAt || expiresAt.getTime() > now) {
+        if (d.planId === "premium" || d.planId === "business-pro") {
+          return d.planId;
+        }
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  return "free";
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // 1. createPost — callable by any authenticated user
 // ═══════════════════════════════════════════════════════════════════════
@@ -81,6 +124,24 @@ export const createPost = functions.https.onCall(async (data, context) => {
       "unauthenticated",
       "Duhet te jesh i kyçur."
     );
+  }
+
+  // Check free plan listing limit (skip for admins)
+  const isAdmin = await hasAdminAccess(uid);
+  if (!isAdmin) {
+    const planId = await getUserActivePlanId(uid);
+    if (planId === "free") {
+      const existingSnap = await db
+        .collection("posts_private")
+        .where("ownerUid", "==", uid)
+        .get();
+      if (existingSnap.size >= FREE_PLAN_MAX_LISTINGS) {
+        throw new functions.https.HttpsError(
+          "resource-exhausted",
+          "Plani Falas lejon vetem 1 shpallje. Kalon ne nje plan me te larte per te postuar me shume."
+        );
+      }
+    }
   }
 
   // Validate required fields

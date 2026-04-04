@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   limit,
@@ -38,6 +39,13 @@ const normalizePositiveInt = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
 };
 
+const normalizeCurrency = (value) => {
+  if (typeof value !== "string") return "€";
+  const normalized = value.trim();
+  if (!normalized || normalized.toLowerCase() === "eur") return "€";
+  return normalized;
+};
+
 export const normalizePaidPlanRequest = (snapshotOrData) => {
   const raw = typeof snapshotOrData?.data === "function" ? snapshotOrData.data() : snapshotOrData || {};
   const requestId = raw.requestId || snapshotOrData?.id || "";
@@ -73,7 +81,7 @@ export const normalizePaidPlanRequest = (snapshotOrData) => {
     listingIdNumber: normalizePositiveInt(raw.listingIdNumber),
     businessName: raw.businessName || "",
     priceAmount: Number(raw.priceAmount) || PRICING_PLAN_META[planId]?.amount || 0,
-    currency: raw.currency || "EUR",
+    currency: normalizeCurrency(raw.currency),
     durationDays,
     durationLabel: raw.durationLabel || (durationDays ? `${durationDays} dite` : ""),
     proofStoragePath: raw.proofStoragePath || "",
@@ -179,6 +187,11 @@ export const markNotificationAsRead = async (notificationId) => {
     status: "read",
     readAt: new Date(),
   });
+};
+
+export const dismissNotification = async (notificationId) => {
+  if (!notificationId) return;
+  await deleteDoc(doc(db, "notifications", notificationId));
 };
 
 export const reviewPaidPlanRequest = async (payload) => {

@@ -1,5 +1,7 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { Icon } from "./Shared.jsx";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { formatUiDate } from "../i18n/ui.js";
 import {
   ANALYTICS_TIMEFRAMES,
   buildListingBreakdownForTimeframe,
@@ -20,53 +22,162 @@ import {
   hasBusinessAnalyticsAccess,
 } from "../services/subscriptions.js";
 
-const numberFormatter = new Intl.NumberFormat("sq-AL");
-
-const KPI_CARD_CONFIG = [
-  {
-    key: "views",
-    label: "Total Views",
-    icon: "eye",
-    tone: "default",
+const COPY = {
+  sq: {
+    kpi: {
+      views: "Total Views",
+      uniqueViews: "Unique Views",
+      whatsappClicks: "WhatsApp Clicks",
+      leads: "Leads",
+      conversionRate: "Conversion Rate",
+    },
+    noActivity: "Pa aktivitet ende",
+    noDate: "Pa date",
+    businessValue: "Business",
+    businessLocked: "Kjo metrike hapet me Business Pro.",
+    lockedTitle: "Business Pro zhbllokon analytics te avancuara",
+    lockedCopy: "Grafiqe, conversion rate, lead insights, device/referrer breakdown dhe aktiviteti i fundit shfaqen vetem per Business Pro.",
+    lockedCta: "Shiko upgrade",
+    emptyTitle: "Statistikat do te shfaqen sapo listing-et te marrin vizita",
+    emptyCopy: "Sistemi po pret eventet e para nga listing detail page, WhatsApp ose telefon.",
+    tableEmptyPrefix: "Nuk ka te dhena per periudhen",
+    tableEmptySuffix: "zgjedhur",
+    tableListing: "Listing",
+    tableViews: "Views",
+    tableWhatsapp: "WhatsApp",
+    tableLeads: "Leads",
+    tableStatus: "Status",
+    tableConv: "Conv. Rate",
+    noLocation: "Pa lokacion",
+    basic: "Basic",
+    loading: "Duke ngarkuar statistikat...",
+    error: "Nuk u ngarkuan statistikat. Provo perseri.",
+    heroEyebrow: "ANALYTICS DASHBOARD",
+    heroTitle: "Performanca e listing-eve tuaja",
+    heroSubtitle: "Ndiqni views, interesimin dhe leads ne kohe reale, me akses te diferencuar sipas planit aktiv.",
+    noPlan: "Pa pakete aktive",
+    expiresOn: "Skadon me",
+    pendingPlan: "Plani juaj eshte ne pritje te verifikimit nga administratori.",
+    inactivePlan: "Aktivizoni Premium ose Business Pro per te pare statistikat.",
+    activatePlans: "Aktivizoni Premium ose Business Pro per te pare statistikat.",
+    upgradeChip: "Statistikat jane feature me pagese",
+    upgradeTitle: "Zhbllokoni dashboard profesional per listing-et tuaja",
+    upgradeCopy: "Premium jep statistika bazike per views, WhatsApp clicks dhe leads. Business Pro shton grafik, conversion rate, recent lead activity dhe breakdown sipas burimit e device.",
+    viewPlans: "Shiko paketat",
+    activateBusiness: "Aktivizo Business Pro",
+    toolbarAria: "Filtro statistikat sipas periudhes",
+    toolbarNote: "Aktiviteti regjistrohet nga detail page, WhatsApp dhe telefon.",
+    periodLabel: "Periudha",
+    sectionPerformance: "Performanca per periudhen e zgjedhur",
+    sectionPerformanceAll: "Pamje aggregate per gjithe historikun e listing-eve.",
+    sectionPerformanceRange: "Metrikat llogariten nga agregimet ditore per performance dhe kosto te kontrolluar.",
+    quickView: "Shikim i shpejte",
+    quickViewCopy: "Totalet per te gjitha listing-et aktive te profilit tuaj.",
+    totalListings: "Total listings",
+    totalPhoneClicks: "Total phone clicks",
+    contactSubmits: "Contact submits",
+    leadRate: "Lead rate",
+    trendTitle: "Trend 30 ditor",
+    trendCopy: "Grafik i agreguar i views dhe leads per 30 ditet e fundit.",
+    trustTitle: "Trust & visibility",
+    trustCopy: "Ky seksion ju ndihmon te kuptoni sa shpejt po gjeneroni interes.",
+    leadsToday: "Leads sot",
+    views7d: "Views 7 dite",
+    whatsapp30d: "WhatsApp 30 dite",
+    sourcesTitle: "Burimet kryesore",
+    sourcesEmpty: "Burimet do te shfaqen sapo te vijne vizitat e para.",
+    devicesTitle: "Paisjet",
+    devicesEmpty: "Nuk ka ende device breakdown.",
+    referrersTitle: "Referrer",
+    referrersEmpty: "Nuk ka ende referrer breakdown.",
+    advancedTitle: "Breakdown te avancuara",
+    advancedCopy: "Source, device dhe referrer insights hapen me Business Pro.",
+    recentActivity: "Recent activity",
+    recentLeads: "Recent leads",
+    insightsTitle: "Insights te avancuara",
+    insightsCopy: "Recent activity, lead stream, device/referrer details dhe event breakdown jane pjese e Business Pro.",
+    noLeadsYet: "Ende nuk ka leads te regjistruara.",
+    noActivityYet: "Ende nuk ka aktivitet te fundit.",
   },
-  {
-    key: "uniqueViews",
-    label: "Unique Views",
-    icon: "users",
-    tone: "default",
+  en: {
+    kpi: {
+      views: "Total Views",
+      uniqueViews: "Unique Views",
+      whatsappClicks: "WhatsApp Clicks",
+      leads: "Leads",
+      conversionRate: "Conversion Rate",
+    },
+    noActivity: "No activity yet",
+    noDate: "No date",
+    businessValue: "Business",
+    businessLocked: "This metric unlocks with Business Pro.",
+    lockedTitle: "Business Pro unlocks advanced analytics",
+    lockedCopy: "Charts, conversion rate, lead insights, device/referrer breakdowns, and recent activity are available only with Business Pro.",
+    lockedCta: "See upgrade",
+    emptyTitle: "Analytics will appear once your listings start getting visits",
+    emptyCopy: "The system is waiting for the first events from the listing detail page, WhatsApp, or phone.",
+    tableEmptyPrefix: "No data for the selected period",
+    tableEmptySuffix: "",
+    tableListing: "Listing",
+    tableViews: "Views",
+    tableWhatsapp: "WhatsApp",
+    tableLeads: "Leads",
+    tableStatus: "Status",
+    tableConv: "Conv. Rate",
+    noLocation: "No location",
+    basic: "Basic",
+    loading: "Loading analytics...",
+    error: "Could not load analytics. Please try again.",
+    heroEyebrow: "ANALYTICS DASHBOARD",
+    heroTitle: "Your listing performance",
+    heroSubtitle: "Track views, interest, and leads in real time, with access based on your active plan.",
+    noPlan: "No active plan",
+    expiresOn: "Expires on",
+    pendingPlan: "Your plan is waiting for administrator verification.",
+    inactivePlan: "Activate Premium or Business Pro to view analytics.",
+    activatePlans: "Activate Premium or Business Pro to view analytics.",
+    upgradeChip: "Analytics are a paid feature",
+    upgradeTitle: "Unlock a professional dashboard for your listings",
+    upgradeCopy: "Premium gives you basic analytics for views, WhatsApp clicks, and leads. Business Pro adds charts, conversion rate, recent lead activity, and source/device breakdowns.",
+    viewPlans: "View plans",
+    activateBusiness: "Activate Business Pro",
+    toolbarAria: "Filter analytics by period",
+    toolbarNote: "Activity is recorded from the detail page, WhatsApp, and phone.",
+    periodLabel: "Period",
+    sectionPerformance: "Performance for the selected period",
+    sectionPerformanceAll: "Aggregate view across your full listing history.",
+    sectionPerformanceRange: "Metrics are calculated from daily aggregates for controlled performance and cost.",
+    quickView: "Quick view",
+    quickViewCopy: "Totals across all active listings in your profile.",
+    totalListings: "Total listings",
+    totalPhoneClicks: "Total phone clicks",
+    contactSubmits: "Contact submits",
+    leadRate: "Lead rate",
+    trendTitle: "30-day trend",
+    trendCopy: "Aggregate chart of views and leads over the last 30 days.",
+    trustTitle: "Trust & visibility",
+    trustCopy: "This section helps you understand how quickly you are generating interest.",
+    leadsToday: "Leads today",
+    views7d: "Views in 7 days",
+    whatsapp30d: "WhatsApp in 30 days",
+    sourcesTitle: "Top sources",
+    sourcesEmpty: "Sources will appear as soon as the first visits arrive.",
+    devicesTitle: "Devices",
+    devicesEmpty: "No device breakdown yet.",
+    referrersTitle: "Referrers",
+    referrersEmpty: "No referrer breakdown yet.",
+    advancedTitle: "Advanced breakdowns",
+    advancedCopy: "Source, device, and referrer insights unlock with Business Pro.",
+    recentActivity: "Recent activity",
+    recentLeads: "Recent leads",
+    insightsTitle: "Advanced insights",
+    insightsCopy: "Recent activity, lead stream, device/referrer details, and event breakdowns are part of Business Pro.",
+    noLeadsYet: "No leads recorded yet.",
+    noActivityYet: "No recent activity yet.",
   },
-  {
-    key: "whatsappClicks",
-    label: "WhatsApp Clicks",
-    icon: "comment-dots",
-    tone: "accent",
-  },
-  {
-    key: "leads",
-    label: "Leads",
-    icon: "sparkles",
-    tone: "accent",
-  },
-];
-
-const formatMetric = (value) => numberFormatter.format(Number(value) || 0);
-const formatPercent = (value) => `${Number(value || 0).toFixed(1)}%`;
-
-const formatDate = (value) => {
-  if (!value) return "Pa aktivitet ende";
-  try {
-    return new Date(value).toLocaleString("sq-AL", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch (_) {
-    return "Pa date";
-  }
 };
 
-function AnalyticsStatCard({ label, value, icon, tone = "default", helper, locked = false }) {
+function AnalyticsStatCard({ label, value, icon, tone = "default", helper, locked = false, copy }) {
   return (
     <article className={`analytics-stat-card analytics-stat-card--${tone}${locked ? " analytics-stat-card--locked" : ""}`}>
       <div className="analytics-stat-card__icon">
@@ -74,52 +185,42 @@ function AnalyticsStatCard({ label, value, icon, tone = "default", helper, locke
       </div>
       <div className="analytics-stat-card__copy">
         <span className="analytics-stat-card__label">{label}</span>
-        <strong className="analytics-stat-card__value">{locked ? "Business" : value}</strong>
-        <p className="analytics-stat-card__helper">
-          {locked ? "Kjo metrike hapet me Business Pro." : helper}
-        </p>
+        <strong className="analytics-stat-card__value">{locked ? copy.businessValue : value}</strong>
+        <p className="analytics-stat-card__helper">{locked ? copy.businessLocked : helper}</p>
       </div>
     </article>
   );
 }
 
-function AnalyticsLockedPanel({ compact = false }) {
+function AnalyticsLockedPanel({ compact = false, copy }) {
   return (
     <div className={`analytics-locked${compact ? " analytics-locked--compact" : ""}`}>
       <div className="analytics-locked__icon">
         <Icon n="shield-halved" />
       </div>
       <div className="analytics-locked__copy">
-        <strong>Business Pro zhbllokon analytics te avancuara</strong>
-        <p>
-          Grafiqe, conversion rate, lead insights, device/referrer breakdown dhe aktiviteti i fundit
-          shfaqen vetem per Business Pro.
-        </p>
+        <strong>{copy.lockedTitle}</strong>
+        <p>{copy.lockedCopy}</p>
       </div>
       <a className="btn btn--primary analytics-locked__cta" href="/#services">
-        Shiko upgrade
+        {copy.lockedCta}
       </a>
     </div>
   );
 }
 
-function AnalyticsEmptyState() {
+function AnalyticsEmptyState({ copy }) {
   return (
     <div className="analytics-empty">
       <Icon n="chart-line" />
-      <h3>Statistikat do te shfaqen sapo listing-et te marrin vizita</h3>
-      <p>
-        Sistemi po pret eventet e para nga listing detail page, WhatsApp ose telefon.
-      </p>
+      <h3>{copy.emptyTitle}</h3>
+      <p>{copy.emptyCopy}</p>
     </div>
   );
 }
 
 function TimelineChart({ items }) {
-  const maxValue = useMemo(
-    () => Math.max(...items.map((item) => Math.max(item.views, item.leads)), 1),
-    [items]
-  );
+  const maxValue = useMemo(() => Math.max(...items.map((item) => Math.max(item.views, item.leads)), 1), [items]);
 
   return (
     <div className="analytics-chart">
@@ -127,18 +228,18 @@ function TimelineChart({ items }) {
         <span><i className="analytics-chart__dot analytics-chart__dot--views" /> Views</span>
         <span><i className="analytics-chart__dot analytics-chart__dot--leads" /> Leads</span>
       </div>
-      <div className="analytics-chart__plot" role="img" aria-label="Grafik i views dhe leads per 30 ditet e fundit">
+      <div className="analytics-chart__plot" role="img" aria-label="Views and leads chart for the last 30 days">
         {items.map((item) => (
           <div className="analytics-chart__slot" key={item.dateKey}>
             <span
               className="analytics-chart__bar analytics-chart__bar--views"
               style={{ height: `${Math.max((item.views / maxValue) * 100, item.views ? 8 : 0)}%` }}
-              title={`${item.label}: ${formatMetric(item.views)} views`}
+              title={`${item.label}: ${item.views} views`}
             />
             <span
               className="analytics-chart__bar analytics-chart__bar--leads"
               style={{ height: `${Math.max((item.leads / maxValue) * 100, item.leads ? 8 : 0)}%` }}
-              title={`${item.label}: ${formatMetric(item.leads)} leads`}
+              title={`${item.label}: ${item.leads} leads`}
             />
             <span className="analytics-chart__label">{item.label}</span>
           </div>
@@ -161,7 +262,7 @@ function BreakdownList({ title, items, emptyText }) {
           {items.slice(0, 6).map((item) => (
             <li key={item.key} className="analytics-breakdown-list__item">
               <span>{formatBreakdownLabel(item.key)}</span>
-              <strong>{formatMetric(item.count)}</strong>
+              <strong>{Number(item.count || 0)}</strong>
             </li>
           ))}
         </ul>
@@ -170,16 +271,14 @@ function BreakdownList({ title, items, emptyText }) {
   );
 }
 
-function ActivityList({ title, items, leadOnly = false }) {
+function ActivityList({ title, items, leadOnly = false, copy, lang }) {
   return (
     <section className="analytics-activity-card">
       <div className="analytics-block__head">
         <h4>{title}</h4>
       </div>
       {items.length === 0 ? (
-        <p className="analytics-breakdown-card__empty">
-          {leadOnly ? "Ende nuk ka leads te regjistruara." : "Ende nuk ka aktivitet te fundit."}
-        </p>
+        <p className="analytics-breakdown-card__empty">{leadOnly ? copy.noLeadsYet : copy.noActivityYet}</p>
       ) : (
         <div className="analytics-activity-list">
           {items.map((item) => (
@@ -189,7 +288,7 @@ function ActivityList({ title, items, leadOnly = false }) {
                 <span>{item.listingTitle}</span>
               </div>
               <div className="analytics-activity-list__details">
-                <span>{formatDate(item.occurredAt)}</span>
+                <span>{formatUiDate(item.occurredAt, lang, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) || copy.noDate}</span>
                 <span>{formatBreakdownLabel(item.deviceType || "unknown")}</span>
                 <span>{formatBreakdownLabel(item.referrerDomain || "direct")}</span>
               </div>
@@ -201,41 +300,32 @@ function ActivityList({ title, items, leadOnly = false }) {
   );
 }
 
-function ListingPerformanceTable({ rows, timeframe, isBusiness }) {
+function ListingPerformanceTable({ rows, timeframe, isBusiness, copy }) {
   if (!rows.length) {
-    return (
-      <div className="analytics-table__empty">
-        Nuk ka te dhena per periudhen {ANALYTICS_TIMEFRAMES.find((item) => item.id === timeframe)?.label || "zgjedhur"}.
-      </div>
-    );
+    const timeframeLabel = ANALYTICS_TIMEFRAMES.find((item) => item.id === timeframe)?.label || copy.tableEmptySuffix;
+    return <div className="analytics-table__empty">{[copy.tableEmptyPrefix, timeframeLabel].filter(Boolean).join(" ")}</div>;
   }
 
   return (
     <div className="analytics-table">
       <div className="analytics-table__head">
-        <span>Listing</span>
-        <span>Views</span>
-        <span>WhatsApp</span>
-        <span>Leads</span>
-        <span>{isBusiness ? "Conv. Rate" : "Status"}</span>
+        <span>{copy.tableListing}</span>
+        <span>{copy.tableViews}</span>
+        <span>{copy.tableWhatsapp}</span>
+        <span>{copy.tableLeads}</span>
+        <span>{isBusiness ? copy.tableConv : copy.tableStatus}</span>
       </div>
       <div className="analytics-table__body">
         {rows.map((row) => (
           <div className="analytics-table__row" key={row.listingId}>
             <span className="analytics-table__listing">
               <strong>{row.listingTitle}</strong>
-              <small>{row.location || row.category || "Pa lokacion"}</small>
+              <small>{row.location || row.category || copy.noLocation}</small>
             </span>
-            <span>{formatMetric(row.metrics?.views)}</span>
-            <span>{formatMetric(row.metrics?.whatsappClicks)}</span>
-            <span>{formatMetric(row.metrics?.leads)}</span>
-            <span>
-              {isBusiness ? (
-                <strong>{formatPercent(row.conversionRate)}</strong>
-              ) : (
-                <small className="analytics-table__hint">Basic</small>
-              )}
-            </span>
+            <span>{Number(row.metrics?.views || 0)}</span>
+            <span>{Number(row.metrics?.whatsappClicks || 0)}</span>
+            <span>{Number(row.metrics?.leads || 0)}</span>
+            <span>{isBusiness ? <strong>{`${Number(row.conversionRate || 0).toFixed(1)}%`}</strong> : <small className="analytics-table__hint">{copy.basic}</small>}</span>
           </div>
         ))}
       </div>
@@ -243,7 +333,23 @@ function ListingPerformanceTable({ rows, timeframe, isBusiness }) {
   );
 }
 
-export default function ListingAnalyticsDashboard({ user }) {
+export default function ListingAnalyticsDashboard({ user, isAdmin = false }) {
+  const { lang } = useLanguage();
+  const copy = COPY[lang] || COPY.sq;
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(lang === "en" ? "en-US" : "sq-AL"), [lang]);
+  const formatMetric = (value) => numberFormatter.format(Number(value) || 0);
+  const formatPercent = (value) => `${Number(value || 0).toFixed(1)}%`;
+
+  const kpiCards = useMemo(
+    () => [
+      { key: "views", label: copy.kpi.views, icon: "eye", tone: "default" },
+      { key: "uniqueViews", label: copy.kpi.uniqueViews, icon: "users", tone: "default" },
+      { key: "whatsappClicks", label: copy.kpi.whatsappClicks, icon: "comment-dots", tone: "accent" },
+      { key: "leads", label: copy.kpi.leads, icon: "sparkles", tone: "accent" },
+    ],
+    [copy]
+  );
+
   const [timeframe, setTimeframe] = useState("30d");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -268,8 +374,7 @@ export default function ListingAnalyticsDashboard({ user }) {
 
       try {
         const subscription = await getUserSubscription(user.id);
-
-        if (!hasBasicAnalyticsAccess(subscription)) {
+        if (!isAdmin && !hasBasicAnalyticsAccess(subscription)) {
           if (!active) return;
           startTransition(() => {
             setState({
@@ -285,7 +390,7 @@ export default function ListingAnalyticsDashboard({ user }) {
           return;
         }
 
-        const shouldLoadAdvanced = hasBusinessAnalyticsAccess(subscription);
+        const shouldLoadAdvanced = isAdmin || hasBusinessAnalyticsAccess(subscription);
         const [summary, details, listingStats, dailyStats, recentActivity, recentLeads] = await Promise.all([
           getOwnerAnalyticsSummary(user.id),
           shouldLoadAdvanced ? getOwnerAnalyticsDetails(user.id) : Promise.resolve(null),
@@ -296,36 +401,31 @@ export default function ListingAnalyticsDashboard({ user }) {
         ]);
 
         if (!active) return;
-
         startTransition(() => {
-          setState({
-            subscription,
-            summary,
-            details,
-            listingStats,
-            dailyStats,
-            recentActivity,
-            recentLeads,
-          });
+          setState({ subscription, summary, details, listingStats, dailyStats, recentActivity, recentLeads });
         });
       } catch (loadError) {
         console.error("Failed to load analytics dashboard:", loadError);
-        if (active) setError("Nuk u ngarkuan statistikat. Provo perseri.");
+        if (active) setError(copy.error);
       } finally {
         if (active) setLoading(false);
       }
     };
 
     load();
-
     return () => {
       active = false;
     };
-  }, [user?.id]);
+  }, [copy.error, isAdmin, user?.id]);
 
   const subscription = state.subscription;
-  const hasBasic = hasBasicAnalyticsAccess(subscription);
-  const hasBusiness = hasBusinessAnalyticsAccess(subscription);
+  const hasBasic = isAdmin || hasBasicAnalyticsAccess(subscription);
+  const hasBusiness = isAdmin || hasBusinessAnalyticsAccess(subscription);
+  const subscriptionMeta = subscription?.status === "pending"
+    ? copy.pendingPlan
+    : subscription?.expiresAt
+    ? `${copy.expiresOn} ${formatUiDate(subscription.expiresAt, lang, { day: "2-digit", month: "short", year: "numeric" })}`
+    : copy.inactivePlan;
 
   const ownerTotals = useMemo(
     () => buildOwnerTotalsForTimeframe(state.summary, state.dailyStats, timeframe),
@@ -337,16 +437,13 @@ export default function ListingAnalyticsDashboard({ user }) {
     [state.listingStats, state.dailyStats, timeframe]
   );
 
-  const timeline = useMemo(
-    () => buildOwnerTimeline(state.dailyStats, 30),
-    [state.dailyStats]
-  );
+  const timeline = useMemo(() => buildOwnerTimeline(state.dailyStats, 30), [state.dailyStats]);
 
   if (loading) {
     return (
       <section className="analytics-shell analytics-shell--loading">
         <div className="admin-empty">
-          <p>Duke ngarkuar statistikat...</p>
+          <p>{copy.loading}</p>
         </div>
       </section>
     );
@@ -367,25 +464,15 @@ export default function ListingAnalyticsDashboard({ user }) {
     <section className="analytics-shell">
       <header className="analytics-hero">
         <div className="analytics-hero__copy">
-          <p className="my-posts-header__eyebrow">ANALYTICS DASHBOARD</p>
-          <h2 className="analytics-hero__title">Performanca e listing-eve tuaja</h2>
-          <p className="analytics-hero__subtitle">
-            Ndiqni views, interesimin dhe leads ne kohe reale, me akses te diferencuar sipas planit aktiv.
-          </p>
+          <p className="my-posts-header__eyebrow">{copy.heroEyebrow}</p>
+          <h2 className="analytics-hero__title">{copy.heroTitle}</h2>
+          <p className="analytics-hero__subtitle">{copy.heroSubtitle}</p>
         </div>
         <div className="analytics-hero__aside">
           <span className={`analytics-plan-badge analytics-plan-badge--${subscription?.planId || "free"}`}>
-            {subscription?.planLabel || "Pa pakete aktive"}
+            {subscription?.planLabel || copy.noPlan}
           </span>
-          <p className="analytics-hero__meta">
-            {subscription?.expiresAt
-              ? `Skadon me ${new Date(subscription.expiresAt).toLocaleDateString("sq-AL", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}`
-              : "Aktivizoni Premium ose Business Pro per te pare statistikat."}
-          </p>
+          <p className="analytics-hero__meta">{subscriptionMeta}</p>
         </div>
       </header>
 
@@ -393,23 +480,20 @@ export default function ListingAnalyticsDashboard({ user }) {
         <div className="analytics-upgrade">
           <div className="analytics-upgrade__panel">
             <div className="analytics-upgrade__copy">
-              <span className="analytics-plan-badge analytics-plan-badge--free">Statistikat jane feature me pagese</span>
-              <h3>Zhbllokoni dashboard profesional per listing-et tuaja</h3>
-              <p>
-                Premium jep statistika bazike per views, WhatsApp clicks dhe leads.
-                Business Pro shton grafik, conversion rate, recent lead activity dhe breakdown sipas burimit e device.
-              </p>
+              <span className="analytics-plan-badge analytics-plan-badge--free">{copy.upgradeChip}</span>
+              <h3>{copy.upgradeTitle}</h3>
+              <p>{copy.upgradeCopy}</p>
             </div>
             <div className="analytics-upgrade__actions">
-              <a className="btn btn--primary" href="/#services">Shiko paketat</a>
-              <a className="btn btn--ghost" href="/#services">Aktivizo Business Pro</a>
+              <a className="btn btn--primary" href="/#services">{copy.viewPlans}</a>
+              <a className="btn btn--ghost" href="/#services">{copy.activateBusiness}</a>
             </div>
           </div>
         </div>
       ) : (
         <>
           <div className="analytics-toolbar">
-            <div className="analytics-toolbar__filters" role="tablist" aria-label="Filtro statistikat sipas periudhes">
+            <div className="analytics-toolbar__filters" role="tablist" aria-label={copy.toolbarAria}>
               {ANALYTICS_TIMEFRAMES.map((item) => (
                 <button
                   key={item.id}
@@ -422,33 +506,33 @@ export default function ListingAnalyticsDashboard({ user }) {
                 </button>
               ))}
             </div>
-            <div className="analytics-toolbar__note">
-              Aktiviteti regjistrohet nga detail page, WhatsApp dhe telefon.
-            </div>
+            <div className="analytics-toolbar__note">{copy.toolbarNote}</div>
           </div>
 
           {!state.listingStats.length ? (
-            <AnalyticsEmptyState />
+            <AnalyticsEmptyState copy={copy} />
           ) : (
             <>
               <div className="analytics-stat-grid">
-                {KPI_CARD_CONFIG.map((card) => (
+                {kpiCards.map((card) => (
                   <AnalyticsStatCard
                     key={card.key}
                     label={card.label}
                     icon={card.icon}
                     tone={card.tone}
                     value={formatMetric(ownerTotals[card.key])}
-                    helper={`Periudha: ${ANALYTICS_TIMEFRAMES.find((item) => item.id === timeframe)?.label || "30 dite"}`}
+                    helper={`${copy.periodLabel}: ${ANALYTICS_TIMEFRAMES.find((item) => item.id === timeframe)?.label || "30d"}`}
+                    copy={copy}
                   />
                 ))}
                 <AnalyticsStatCard
-                  label="Conversion Rate"
+                  label={copy.kpi.conversionRate}
                   icon="chart-line"
                   tone="premium"
                   value={formatPercent(ownerTotals.conversionRate)}
                   helper="Leads / Views"
                   locked={!hasBusiness}
+                  copy={copy}
                 />
               </div>
 
@@ -456,39 +540,35 @@ export default function ListingAnalyticsDashboard({ user }) {
                 <section className="analytics-panel analytics-panel--wide">
                   <div className="analytics-block__head">
                     <div>
-                      <h3>Performanca per periudhen e zgjedhur</h3>
-                      <p>
-                        {timeframe === "all"
-                          ? "Pamje aggregate per gjithe historikun e listing-eve."
-                          : "Metrikat llogariten nga agregimet ditore per performance dhe kosto te kontrolluar."}
-                      </p>
+                      <h3>{copy.sectionPerformance}</h3>
+                      <p>{timeframe === "all" ? copy.sectionPerformanceAll : copy.sectionPerformanceRange}</p>
                     </div>
                   </div>
-                  <ListingPerformanceTable rows={listingRows} timeframe={timeframe} isBusiness={hasBusiness} />
+                  <ListingPerformanceTable rows={listingRows} timeframe={timeframe} isBusiness={hasBusiness} copy={copy} />
                 </section>
 
                 <section className="analytics-panel">
                   <div className="analytics-block__head">
                     <div>
-                      <h3>Shikim i shpejte</h3>
-                      <p>Totalet per te gjitha listing-et aktive te profilit tuaj.</p>
+                      <h3>{copy.quickView}</h3>
+                      <p>{copy.quickViewCopy}</p>
                     </div>
                   </div>
                   <dl className="analytics-summary-list">
                     <div>
-                      <dt>Total listings</dt>
+                      <dt>{copy.totalListings}</dt>
                       <dd>{formatMetric(state.summary?.listingCount || state.listingStats.length)}</dd>
                     </div>
                     <div>
-                      <dt>Total phone clicks</dt>
+                      <dt>{copy.totalPhoneClicks}</dt>
                       <dd>{formatMetric(ownerTotals.phoneClicks)}</dd>
                     </div>
                     <div>
-                      <dt>Contact submits</dt>
+                      <dt>{copy.contactSubmits}</dt>
                       <dd>{formatMetric(ownerTotals.contactSubmits)}</dd>
                     </div>
                     <div>
-                      <dt>Lead rate</dt>
+                      <dt>{copy.leadRate}</dt>
                       <dd>{formatPercent(ownerTotals.conversionRate)}</dd>
                     </div>
                   </dl>
@@ -499,56 +579,32 @@ export default function ListingAnalyticsDashboard({ user }) {
                 <section className="analytics-panel analytics-panel--wide">
                   <div className="analytics-block__head">
                     <div>
-                      <h3>Trend 30 ditor</h3>
-                      <p>Grafik i agreguar i views dhe leads per 30 ditet e fundit.</p>
+                      <h3>{copy.trendTitle}</h3>
+                      <p>{copy.trendCopy}</p>
                     </div>
                   </div>
-                  {hasBusiness ? <TimelineChart items={timeline} /> : <AnalyticsLockedPanel compact />}
+                  {hasBusiness ? <TimelineChart items={timeline} /> : <AnalyticsLockedPanel compact copy={copy} />}
                 </section>
 
                 <section className="analytics-panel">
                   <div className="analytics-block__head">
                     <div>
-                      <h3>Trust & visibility</h3>
-                      <p>Ky seksion ju ndihmon te kuptoni sa shpejt po gjeneroni interes.</p>
+                      <h3>{copy.trustTitle}</h3>
+                      <p>{copy.trustCopy}</p>
                     </div>
                   </div>
                   <div className="analytics-mini-cards">
                     <article>
-                      <span>Leads sot</span>
-                      <strong>
-                        {
-                          buildOwnerTotalsForTimeframe(
-                            state.summary,
-                            state.dailyStats,
-                            "today"
-                          ).leads
-                        }
-                      </strong>
+                      <span>{copy.leadsToday}</span>
+                      <strong>{buildOwnerTotalsForTimeframe(state.summary, state.dailyStats, "today").leads}</strong>
                     </article>
                     <article>
-                      <span>Views 7 dite</span>
-                      <strong>
-                        {
-                          buildOwnerTotalsForTimeframe(
-                            state.summary,
-                            state.dailyStats,
-                            "7d"
-                          ).views
-                        }
-                      </strong>
+                      <span>{copy.views7d}</span>
+                      <strong>{buildOwnerTotalsForTimeframe(state.summary, state.dailyStats, "7d").views}</strong>
                     </article>
                     <article>
-                      <span>WhatsApp 30 dite</span>
-                      <strong>
-                        {
-                          buildOwnerTotalsForTimeframe(
-                            state.summary,
-                            state.dailyStats,
-                            "30d"
-                          ).whatsappClicks
-                        }
-                      </strong>
+                      <span>{copy.whatsapp30d}</span>
+                      <strong>{buildOwnerTotalsForTimeframe(state.summary, state.dailyStats, "30d").whatsappClicks}</strong>
                     </article>
                   </div>
                 </section>
@@ -557,31 +613,19 @@ export default function ListingAnalyticsDashboard({ user }) {
               <div className="analytics-grid analytics-grid--secondary">
                 {hasBusiness ? (
                   <>
-                    <BreakdownList
-                      title="Burimet kryesore"
-                      items={state.details?.sourceBreakdown || []}
-                      emptyText="Burimet do te shfaqen sapo te vijne vizitat e para."
-                    />
-                    <BreakdownList
-                      title="Paisjet"
-                      items={state.details?.deviceBreakdown || []}
-                      emptyText="Nuk ka ende device breakdown."
-                    />
-                    <BreakdownList
-                      title="Referrer"
-                      items={state.details?.referrerBreakdown || []}
-                      emptyText="Nuk ka ende referrer breakdown."
-                    />
+                    <BreakdownList title={copy.sourcesTitle} items={state.details?.sourceBreakdown || []} emptyText={copy.sourcesEmpty} />
+                    <BreakdownList title={copy.devicesTitle} items={state.details?.deviceBreakdown || []} emptyText={copy.devicesEmpty} />
+                    <BreakdownList title={copy.referrersTitle} items={state.details?.referrerBreakdown || []} emptyText={copy.referrersEmpty} />
                   </>
                 ) : (
                   <section className="analytics-panel analytics-panel--wide">
                     <div className="analytics-block__head">
                       <div>
-                        <h3>Breakdown te avancuara</h3>
-                        <p>Source, device dhe referrer insights hapen me Business Pro.</p>
+                        <h3>{copy.advancedTitle}</h3>
+                        <p>{copy.advancedCopy}</p>
                       </div>
                     </div>
-                    <AnalyticsLockedPanel compact />
+                    <AnalyticsLockedPanel compact copy={copy} />
                   </section>
                 )}
               </div>
@@ -589,21 +633,18 @@ export default function ListingAnalyticsDashboard({ user }) {
               <div className="analytics-grid analytics-grid--secondary">
                 {hasBusiness ? (
                   <>
-                    <ActivityList title="Recent activity" items={state.recentActivity} />
-                    <ActivityList title="Recent leads" items={state.recentLeads} leadOnly />
+                    <ActivityList title={copy.recentActivity} items={state.recentActivity} copy={copy} lang={lang} />
+                    <ActivityList title={copy.recentLeads} items={state.recentLeads} leadOnly copy={copy} lang={lang} />
                   </>
                 ) : (
                   <section className="analytics-panel analytics-panel--wide">
                     <div className="analytics-block__head">
                       <div>
-                        <h3>Insights te avancuara</h3>
-                        <p>
-                          Recent activity, lead stream, device/referrer details dhe event breakdown
-                          jane pjese e Business Pro.
-                        </p>
+                        <h3>{copy.insightsTitle}</h3>
+                        <p>{copy.insightsCopy}</p>
                       </div>
                     </div>
-                    <AnalyticsLockedPanel compact />
+                    <AnalyticsLockedPanel compact copy={copy} />
                   </section>
                 )}
               </div>

@@ -4,6 +4,8 @@ import { Icon } from "../components/Shared.jsx";
 import ImageUploader from "../components/ImageUploader.jsx";
 import PropertyFeaturesField from "../components/PropertyFeaturesField.jsx";
 import LocationPicker from "../components/Map/LocationPicker.jsx";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { translateCategory } from "../i18n/ui.js";
 import { auth } from "../firebase.js";
 import { CITIES } from "../utils/storage.js";
 import { isValidImageUrl } from "../utils/imageUpload.js";
@@ -35,7 +37,6 @@ const EMPTY = {
 const CATEGORIES = ["Villa", "Apartament"];
 
 const sanitizeWhatsapp = (value) => value.replace(/[^\d+]/g, "").replace(/^00/, "+");
-
 const isValidWhatsapp = (value) => /^\+?\d{8,15}$/.test(value);
 
 const mapPostToForm = (post) => ({
@@ -61,6 +62,7 @@ const mapPostToForm = (post) => ({
 });
 
 export default function EditVilla({ user }) {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY);
@@ -96,7 +98,7 @@ export default function EditVilla({ user }) {
 
     const loadPost = async () => {
       if (!id) {
-        setError("Shpallja nuk u gjet.");
+        setError(t("editPost.notFound"));
         setLoading(false);
         return;
       }
@@ -107,13 +109,13 @@ export default function EditVilla({ user }) {
 
         if (!isMounted) return;
         if (!data) {
-          setError("Shpallja nuk u gjet.");
+          setError(t("editPost.notFound"));
           setLoading(false);
           return;
         }
 
         if (!currentUser?.uid || currentUser.uid !== data.ownerUid) {
-          setError("Nuk keni leje ta editoni kete shpallje.");
+          setError(t("editPost.noPermission"));
           setLoading(false);
           return;
         }
@@ -122,7 +124,7 @@ export default function EditVilla({ user }) {
         setForm(mapPostToForm(data));
       } catch (loadError) {
         console.error("Failed to load post for edit:", loadError);
-        if (isMounted) setError("Nuk u arrit te ngarkohet shpallja per editim.");
+        if (isMounted) setError(t("editPost.loadError"));
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -132,7 +134,7 @@ export default function EditVilla({ user }) {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, t]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -140,54 +142,48 @@ export default function EditVilla({ user }) {
     setSuccess("");
 
     if (!post) {
-      setError("Shpallja nuk u gjet.");
+      setError(t("editPost.notFound"));
       return;
     }
 
     const currentUser = auth.currentUser;
     if (!currentUser?.uid || currentUser.uid !== post.ownerUid) {
-      setError("Nuk keni leje ta editoni kete shpallje.");
+      setError(t("editPost.noPermission"));
       return;
     }
-
     if (imageUploading) {
-      setError("Prit sa te perfundoje ngarkimi i fotos.");
+      setError(t("editPost.waitForUpload"));
       return;
     }
 
     const requiredFields = ["title", "description", "price", "location", "rooms", "beds", "baths", "whatsapp"];
-    const hasMissingRequiredField = requiredFields.some((field) => !form[field]);
-    if (hasMissingRequiredField) {
-      setError("Ploteso te gjitha fushat.");
+    if (requiredFields.some((field) => !form[field])) {
+      setError(t("editPost.fillAllFields"));
       return;
     }
-
     if (!form.imageUrls.length) {
-      setError("Shto te pakten nje foto.");
+      setError(t("editPost.addPhoto"));
       return;
     }
-
     if (canManagePremium && form.isPremium) {
       const premiumOrder = Number.parseInt(form.premiumOrder, 10);
       if (!Number.isInteger(premiumOrder) || premiumOrder < 1 || premiumOrder > 10) {
-        setError("Renditja premium duhet te jete nje numer nga 1 deri ne 10.");
+        setError(t("editPost.premiumOrderError"));
         return;
       }
     }
-
     if (form.imageUrls.length > 10) {
-      setError("Mund te shtosh maksimumi 10 foto.");
+      setError(t("editPost.maxPhotos"));
       return;
     }
-
     if (form.imageUrls.some((url) => !isValidImageUrl(url))) {
-      setError("Nje ose me shume foto kane link jo-valid.");
+      setError(t("editPost.invalidPhotoUrl"));
       return;
     }
 
     const cleanWhatsapp = sanitizeWhatsapp(form.whatsapp);
     if (!isValidWhatsapp(cleanWhatsapp)) {
-      setError("Numri i WhatsApp duhet te jete valid (p.sh. +38349123456).");
+      setError(t("editPost.invalidWhatsApp"));
       return;
     }
 
@@ -218,11 +214,11 @@ export default function EditVilla({ user }) {
         lng: form.lng || null,
       });
 
-      setSuccess("Ndryshimet u ruajten me sukses! Shpallja do te shqyrtohet perseri nga admini.");
+      setSuccess(t("editPost.success"));
       setTimeout(() => navigate("/profile?tab=listings"), 2500);
     } catch (saveError) {
       console.error("Failed to update post:", saveError);
-      setError("Nuk u arrit te ruhen ndryshimet. Provo perseri.");
+      setError(t("editPost.saveError"));
     } finally {
       setSubmitting(false);
     }
@@ -234,8 +230,8 @@ export default function EditVilla({ user }) {
         <div className="page-form__header">
           <div className="page-form__header-inner">
             <div>
-              <h1 className="page-form__title">Edito shpalljen</h1>
-              <p className="page-form__subtitle">Duke ngarkuar te dhenat e shpalljes...</p>
+              <h1 className="page-form__title">{t("editPost.title")}</h1>
+              <p className="page-form__subtitle">{t("editPost.loadingData")}</p>
             </div>
           </div>
         </div>
@@ -249,11 +245,11 @@ export default function EditVilla({ user }) {
         <div className="page-form__header">
           <div className="page-form__header-inner">
             <div>
-              <h1 className="page-form__title">Edito shpalljen</h1>
-              <p className="page-form__subtitle">Nuk mund te vazhdohet me editimin.</p>
+              <h1 className="page-form__title">{t("editPost.title")}</h1>
+              <p className="page-form__subtitle">{t("editPost.cannotContinue")}</p>
             </div>
             <button className="btn btn--ghost" onClick={() => navigate("/profile?tab=listings")}>
-              <Icon n="arrow-left" /> Kthehu
+              <Icon n="arrow-left" /> {t("common.back")}
             </button>
           </div>
         </div>
@@ -272,15 +268,16 @@ export default function EditVilla({ user }) {
       <div className="page-form__header">
         <div className="page-form__header-inner">
           <div>
-            <h1 className="page-form__title">Edito shpalljen</h1>
-            <p className="page-form__subtitle">Perditeso detajet e shpalljes tende</p>
+            <h1 className="page-form__title">{t("editPost.title")}</h1>
+            <p className="page-form__subtitle">{t("editPost.subtitle")}</p>
           </div>
           <div className="page-form__header-actions">
             <p className="page-form__user">
-              I kycur si: <strong>{auth.currentUser?.displayName || auth.currentUser?.email || "Perdorues"}</strong>
+              {t("editPost.loggedAs")}
+              <strong>{auth.currentUser?.displayName || auth.currentUser?.email || t("messages.defaultUser")}</strong>
             </p>
             <button className="btn btn--ghost" onClick={() => navigate("/profile?tab=listings")}>
-              <Icon n="arrow-left" /> Kthehu
+              <Icon n="arrow-left" /> {t("common.back")}
             </button>
           </div>
         </div>
@@ -294,24 +291,24 @@ export default function EditVilla({ user }) {
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
               <div className="form-group form-group--full">
-                <label>Titulli i prones</label>
-                <input type="text" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="p.sh. Villa luksoze me pishine" />
+                <label>{t("editPost.titleLabel")}</label>
+                <input type="text" value={form.title} onChange={(event) => set("title", event.target.value)} placeholder={t("editPost.titlePlaceholder")} />
               </div>
 
               <div className="form-group form-group--full">
-                <label>Pershkrimi</label>
-                <textarea rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Pershkruaj pronen, ambientin dhe kushtet..." />
+                <label>{t("editPost.descLabel")}</label>
+                <textarea rows={4} value={form.description} onChange={(event) => set("description", event.target.value)} placeholder={t("editPost.descPlaceholder")} />
               </div>
 
               <div className="form-group">
-                <label>Cmimi (€/nate)</label>
-                <input type="number" min="1" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="220" />
+                <label>{t("editPost.priceLabel")}</label>
+                <input type="number" min="1" value={form.price} onChange={(event) => set("price", event.target.value)} placeholder="220" />
               </div>
 
               <div className="form-group">
-                <label>Lokacioni</label>
-                <select value={form.location} onChange={(e) => set("location", e.target.value)}>
-                  <option value="">Zgjedh qytetin</option>
+                <label>{t("createPost.locationLabel")}</label>
+                <select value={form.location} onChange={(event) => set("location", event.target.value)}>
+                  <option value="">{t("editPost.selectCity")}</option>
                   {CITIES.map((city) => (
                     <option key={city} value={city}>
                       {city}
@@ -321,11 +318,11 @@ export default function EditVilla({ user }) {
               </div>
 
               <div className="form-group">
-                <label>Kategoria</label>
-                <select value={form.category} onChange={(e) => setCategory(e.target.value)}>
+                <label>{t("createPost.categoryLabel")}</label>
+                <select value={form.category} onChange={(event) => setCategory(event.target.value)}>
                   {CATEGORIES.map((category) => (
                     <option key={category} value={category}>
-                      {category}
+                      {translateCategory(category, t)}
                     </option>
                   ))}
                 </select>
@@ -333,33 +330,32 @@ export default function EditVilla({ user }) {
 
               {canManagePremium && (
                 <>
-                  {/* Premium section: admin-only controls for the curated home carousel. */}
                   <div className="form-group">
                     <label className="premium-toggle-field">
                       <input
                         type="checkbox"
                         checked={form.isPremium}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           setForm((current) => ({
                             ...current,
-                            isPremium: e.target.checked,
-                            premiumOrder: e.target.checked ? current.premiumOrder : "",
+                            isPremium: event.target.checked,
+                            premiumOrder: event.target.checked ? current.premiumOrder : "",
                           }))
                         }
                       />
-                      <span>Shenoje si premium</span>
+                      <span>{t("editPost.markPremium")}</span>
                     </label>
                   </div>
 
                   <div className="form-group">
-                    <label>Renditja premium (1-10)</label>
+                    <label>{t("editPost.premiumOrderLabel")}</label>
                     <input
                       type="number"
                       min="1"
                       max="10"
                       value={form.premiumOrder}
                       disabled={!form.isPremium}
-                      onChange={(e) => set("premiumOrder", e.target.value)}
+                      onChange={(event) => set("premiumOrder", event.target.value)}
                       placeholder="1"
                     />
                   </div>
@@ -367,34 +363,34 @@ export default function EditVilla({ user }) {
               )}
 
               <div className="form-group">
-                <label>Dhoma</label>
-                <input type="number" min="1" value={form.rooms} onChange={(e) => set("rooms", e.target.value)} placeholder="4" />
+                <label>{t("createPost.roomsLabel")}</label>
+                <input type="number" min="1" value={form.rooms} onChange={(event) => set("rooms", event.target.value)} placeholder="4" />
               </div>
 
               <div className="form-group">
-                <label>Shtreter</label>
-                <input type="number" min="1" value={form.beds} onChange={(e) => set("beds", e.target.value)} placeholder="3" />
+                <label>{t("createPost.bedsLabel")}</label>
+                <input type="number" min="1" value={form.beds} onChange={(event) => set("beds", event.target.value)} placeholder="3" />
               </div>
 
               <div className="form-group">
-                <label>Banjo</label>
-                <input type="number" min="1" value={form.baths} onChange={(e) => set("baths", e.target.value)} placeholder="2" />
+                <label>{t("createPost.bathsLabel")}</label>
+                <input type="number" min="1" value={form.baths} onChange={(event) => set("baths", event.target.value)} placeholder="2" />
               </div>
 
               <div className="form-group">
-                <label>Persona</label>
-                <input type="number" min="1" value={form.guests} onChange={(e) => set("guests", e.target.value)} placeholder="8" />
+                <label>{t("createPost.guestsLabel")}</label>
+                <input type="number" min="1" value={form.guests} onChange={(event) => set("guests", event.target.value)} placeholder="8" />
               </div>
 
               <div className="form-group">
-                <label>Numri WhatsApp</label>
-                <input type="text" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="38349123456" />
+                <label>{t("editPost.whatsappLabel")}</label>
+                <input type="text" value={form.whatsapp} onChange={(event) => set("whatsapp", event.target.value)} placeholder="38349123456" />
               </div>
 
               <LocationPicker
                 value={{ address: form.address, city: form.city, country: form.country, lat: form.lat, lng: form.lng }}
                 onChange={({ address, city, country, lat, lng }) => {
-                  setForm((f) => ({ ...f, address, city, country, lat, lng }));
+                  setForm((current) => ({ ...current, address, city, country, lat, lng }));
                 }}
               />
 
@@ -413,7 +409,7 @@ export default function EditVilla({ user }) {
             </div>
 
             <button type="submit" className="submit-btn" disabled={submitting || imageUploading}>
-              <Icon n="save" /> {submitting ? "Duke ruajtur..." : imageUploading ? "Duke ngarkuar fotot..." : "Ruaj ndryshimet"}
+              <Icon n="save" /> {submitting ? t("editPost.savingChanges") : imageUploading ? t("editPost.uploadingPhotos") : t("editPost.submitBtn")}
             </button>
           </form>
         </div>

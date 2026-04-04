@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ChatDots, PaperPlaneRight } from "@phosphor-icons/react";
+import { Icon } from "../Shared.jsx";
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { formatUiDate } from "../../i18n/ui.js";
 import { markConversationRead, onConversationMessages, sendMessage } from "../../services/chat.js";
 
-function formatTime(date) {
-  if (!date) return "";
-  const d = date instanceof Date ? date : new Date(date);
-  return d.toLocaleTimeString("sq-AL", { hour: "2-digit", minute: "2-digit" });
-}
-
 export default function MessageThread({ conversation, currentUser, onBack }) {
+  const { lang, t } = useLanguage();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -16,8 +13,8 @@ export default function MessageThread({ conversation, currentUser, onBack }) {
   const inputRef = useRef(null);
 
   const conversationId = conversation?.id;
-  const otherUserId = conversation?.participants?.find((p) => p !== currentUser?.id);
-  const otherName = conversation?.participantNames?.[otherUserId] || "Perdorues";
+  const otherUserId = conversation?.participants?.find((participant) => participant !== currentUser?.id);
+  const otherName = conversation?.participantNames?.[otherUserId] || t("messages.defaultUser");
   const listingTitle = conversation?.listingTitle || "";
 
   useEffect(() => {
@@ -32,8 +29,8 @@ export default function MessageThread({ conversation, currentUser, onBack }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
+  const handleSend = async (event) => {
+    event.preventDefault();
     const trimmed = text.trim();
     if (!trimmed || sending || !currentUser?.id || !conversationId) return;
     setSending(true);
@@ -52,8 +49,8 @@ export default function MessageThread({ conversation, currentUser, onBack }) {
   if (!conversation) {
     return (
       <div className="msg-thread msg-thread--empty">
-        <ChatDots size={32} aria-hidden="true" />
-        <p>Zgjidhni një bisedë nga lista</p>
+        <Icon n="message" size={32} />
+        <p>{t("messages.selectChat")}</p>
       </div>
     );
   }
@@ -62,8 +59,8 @@ export default function MessageThread({ conversation, currentUser, onBack }) {
     <div className="msg-thread">
       <div className="msg-thread__header">
         {onBack && (
-          <button className="msg-thread__back" onClick={onBack} aria-label="Kthehu">
-            <ArrowLeft aria-hidden="true" />
+          <button className="msg-thread__back" onClick={onBack} aria-label={t("common.back")}>
+            <Icon n="arrow-left" />
           </button>
         )}
         <div className="msg-thread__header-info">
@@ -74,14 +71,16 @@ export default function MessageThread({ conversation, currentUser, onBack }) {
 
       <div className="msg-thread__messages">
         {messages.length === 0 && (
-          <p className="msg-thread__no-msgs">Filloni bisedën duke dërguar mesazhin e parë.</p>
+          <p className="msg-thread__no-msgs">{t("messages.startChatHint")}</p>
         )}
-        {messages.map((msg) => {
-          const isMine = msg.senderId === currentUser.id;
+        {messages.map((message) => {
+          const isMine = message.senderId === currentUser.id;
           return (
-            <div key={msg.id} className={`msg-bubble ${isMine ? "msg-bubble--mine" : "msg-bubble--theirs"}`}>
-              <p className="msg-bubble__text">{msg.text}</p>
-              <span className="msg-bubble__time">{formatTime(msg.createdAt)}</span>
+            <div key={message.id} className={`msg-bubble ${isMine ? "msg-bubble--mine" : "msg-bubble--theirs"}`}>
+              <p className="msg-bubble__text">{message.text}</p>
+              <span className="msg-bubble__time">
+                {formatUiDate(message.createdAt, lang, { hour: "2-digit", minute: "2-digit" })}
+              </span>
             </div>
           );
         })}
@@ -93,17 +92,17 @@ export default function MessageThread({ conversation, currentUser, onBack }) {
           ref={inputRef}
           className="msg-thread__input"
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Shkruaj mesazh..."
+          onChange={(event) => setText(event.target.value)}
+          placeholder={t("messages.placeholder")}
           autoComplete="off"
         />
         <button
           type="submit"
           className="msg-thread__send-btn"
           disabled={!text.trim() || sending}
-          aria-label="Dërgo"
+          aria-label={t("messages.send")}
         >
-          <PaperPlaneRight aria-hidden="true" />
+          <Icon n="paper-plane" />
         </button>
       </form>
     </div>

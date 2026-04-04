@@ -3,9 +3,11 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
+import { ArrowLeft, ArrowUpDown, BarChart3, ClipboardList, Menu, Sparkles, UsersRound } from "lucide-react";
 import { BrandLogo, Icon } from "../components/Shared.jsx";
+import AdminAnalyticsPanel from "../components/AdminAnalyticsPanel.jsx";
 import PaidPlansAdminPanel from "../components/PaidPlansAdminPanel.jsx";
-import { GearSix } from "@phosphor-icons/react";
+import ModernSidebar from "../components/ui/modern-side-bar.tsx";
 import { db, functions } from "../firebase.js";
 import {
   listAllPrivatePosts,
@@ -19,6 +21,39 @@ import {
 import { getListingExperience } from "../utils/experience.js";
 import { FEATURE_ICONS } from "../utils/listingFeatures.js";
 
+const ADMIN_SECTIONS = [
+  {
+    id: "analytics",
+    label: "Statistikat",
+    description: "Views dhe performanca globale",
+    icon: BarChart3,
+  },
+  {
+    id: "posts",
+    label: "Moderimi",
+    description: "Mirato ose refuzo shpalljet",
+    icon: ClipboardList,
+  },
+  {
+    id: "reorder",
+    label: "Renditja",
+    description: "Kontrollo rendin e listimeve aktive",
+    icon: ArrowUpDown,
+  },
+  {
+    id: "premium",
+    label: "Planet me pagese",
+    description: "Menaxho premium dhe verifikimet",
+    icon: Sparkles,
+  },
+  {
+    id: "users",
+    label: "Perdoruesit",
+    description: "Monitoro llogarite dhe rolet",
+    icon: UsersRound,
+  },
+];
+
 export default function AdminDashboardPage({ user }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState("posts");
@@ -31,6 +66,8 @@ export default function AdminDashboardPage({ user }) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState("desc");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false);
   // Posts moderation
   const [statusFilter, setStatusFilter] = useState("all");
   const [idSearch, setIdSearch] = useState("");
@@ -60,12 +97,12 @@ export default function AdminDashboardPage({ user }) {
   const actionBtnRefs = useRef({});
   const userBtnRefs = useRef({});
 
-  const toMillis = (value) => {
+  const toMillis = useCallback((value) => {
     if (!value) return 0;
     if (typeof value.toDate === "function") return value.toDate().getTime();
     const parsed = Date.parse(value);
     return Number.isNaN(parsed) ? 0 : parsed;
-  };
+  }, []);
 
   // ─── Load data ────────────────────────────────────────────────────
   const loadPosts = async () => {
@@ -115,6 +152,11 @@ export default function AdminDashboardPage({ user }) {
 
   useEffect(() => {
     if (tab === "reorder") loadDragPosts();
+  }, [tab]);
+
+  useEffect(() => {
+    setIsSidebarMobileOpen(false);
+    setOpenActionMenu(null);
   }, [tab]);
 
   useEffect(() => {
@@ -549,6 +591,65 @@ export default function AdminDashboardPage({ user }) {
   }, [currentPremiumList, premiumSearch, toMillis]);
 
   const premiumCount = activePremiumCandidates.filter((post) => post.isPremium).length;
+  const currentSection = ADMIN_SECTIONS.find((section) => section.id === tab) || ADMIN_SECTIONS[1];
+  const sidebarItems = useMemo(
+    () =>
+      ADMIN_SECTIONS.map((section) => ({
+        ...section,
+        badge:
+          section.id === "posts"
+            ? pendingCount || null
+            : section.id === "premium"
+              ? premiumCount || null
+              : section.id === "users"
+                ? users.length || null
+                : null,
+      })),
+    [pendingCount, premiumCount, users.length]
+  );
+  const dashboardStats = useMemo(
+    () => [
+      {
+        key: "posts",
+        label: "Totali shpallje",
+        value: posts.length,
+        hint: "Gjithe listimet ne sistem",
+        icon: "home",
+      },
+      {
+        key: "users",
+        label: "Totali perdorues",
+        value: users.length,
+        hint: "Llogari aktive dhe te regjistruara",
+        icon: "users",
+      },
+      {
+        key: "pending",
+        label: "Ne pritje",
+        value: pendingCount,
+        hint: "Shpallje qe presin verifikim",
+        icon: "clock",
+        valueClassName: "warning",
+      },
+      {
+        key: "active",
+        label: "Aktive",
+        value: activeCount,
+        hint: "Listime te publikuara",
+        icon: "check-circle",
+        valueClassName: "gold",
+      },
+      {
+        key: "rejected",
+        label: "Refuzuara",
+        value: rejectedCount,
+        hint: "Listime te ndaluara nga paneli",
+        icon: "ban",
+        valueStyle: { color: "var(--error)" },
+      },
+    ],
+    [activeCount, pendingCount, posts.length, rejectedCount, users.length]
+  );
 
   if (!user || user.role !== "admin") {
     return (
@@ -565,64 +666,108 @@ export default function AdminDashboardPage({ user }) {
 
   return (
     <>
-      <header className="admin-header">
-        <div className="admin-header__inner">
-          <BrandLogo light onClick={() => navigate("/")} />
-          <div className="admin-header__meta">
-            <p style={{ color: "rgba(255,255,255,.6)", fontSize: ".88rem" }}>
-              Admin: <strong style={{ color: "var(--gold)" }}>{user.name}</strong>
-            </p>
-            <button className="btn btn--ghost" onClick={() => navigate("/")}>
-              <Icon n="arrow-left" /> Kthehu
+      <div className={`admin-shell${isSidebarCollapsed ? " admin-shell--collapsed" : ""}`}>
+        <ModernSidebar
+          activeItemId={tab}
+          brand={<BrandLogo light onClick={() => navigate("/")} className="modern-sidebar__brand-logo" />}
+          footer={
+            <button type="button" className="modern-sidebar__footer-link" onClick={() => navigate("/")}>
+              <ArrowLeft size={16} strokeWidth={2} />
+              <span>Kthehu ne faqe</span>
             </button>
-          </div>
-        </div>
-      </header>
+          }
+          isCollapsed={isSidebarCollapsed}
+          isMobileOpen={isSidebarMobileOpen}
+          items={sidebarItems}
+          meta={
+            <div className="modern-sidebar__meta-card">
+              <span className="modern-sidebar__meta-label">Admin aktiv</span>
+              <strong>{user.name}</strong>
+              <small>Qasje e plote ne moderim, perdorues dhe pagesa.</small>
+            </div>
+          }
+          onMobileClose={() => setIsSidebarMobileOpen(false)}
+          onSelect={setTab}
+          onToggleCollapse={() => setIsSidebarCollapsed((current) => !current)}
+          subtitle={user.name}
+          title="Admin Dashboard"
+        />
 
-      <div className="admin-body">
-        <div className="admin-stat-grid">
-          <div className="admin-stat-card">
-            <p className="admin-stat-card__label">Totali shpallje</p>
-            <p className="admin-stat-card__val">{posts.length}</p>
-          </div>
-          <div className="admin-stat-card">
-            <p className="admin-stat-card__label">Totali perdorues</p>
-            <p className="admin-stat-card__val">{users.length}</p>
-          </div>
-          <div className="admin-stat-card">
-            <p className="admin-stat-card__label">Ne pritje</p>
-            <p className="admin-stat-card__val" style={{ color: "#e67e22" }}>{pendingCount}</p>
-          </div>
-          <div className="admin-stat-card">
-            <p className="admin-stat-card__label">Aktive</p>
-            <p className="admin-stat-card__val gold">{activeCount}</p>
-          </div>
-          <div className="admin-stat-card">
-            <p className="admin-stat-card__label">Refuzuara</p>
-            <p className="admin-stat-card__val" style={{ color: "var(--error)" }}>{rejectedCount}</p>
-          </div>
-        </div>
+        <div className="admin-shell__main">
+          <div className="admin-body">
+            <header className="admin-page-header">
+              <div className="admin-page-header__bar">
+                <div className="admin-page-header__intro">
+                  <button
+                    type="button"
+                    className="admin-page-header__menu"
+                    aria-label="Hap navigimin"
+                    onClick={() => setIsSidebarMobileOpen(true)}
+                  >
+                    <Menu size={18} strokeWidth={2} />
+                  </button>
+                  <div className="admin-page-header__copy">
+                    <p className="admin-page-header__eyebrow">Villa Apartmene Admin</p>
+                    <h1 className="admin-page-header__title">{currentSection.label}</h1>
+                    <p className="admin-page-header__subtitle">{currentSection.description}</p>
+                  </div>
+                </div>
 
-        <div className="admin-tabs">
-          <button className={`admin-tab ${tab === "posts" ? "active" : ""}`} onClick={() => setTab("posts")}>
-            <Icon n="clipboard-check" /> Moderimi
-          </button>
-          <button className={`admin-tab ${tab === "reorder" ? "active" : ""}`} onClick={() => setTab("reorder")}>
-            <Icon n="arrows-up-down" /> Renditja
-          </button>
-          <button className={`admin-tab ${tab === "premium" ? "active" : ""}`} onClick={() => setTab("premium")}>
-            <Icon n="sparkles" /> Planet me pagese
-          </button>
-          <button className={`admin-tab ${tab === "users" ? "active" : ""}`} onClick={() => setTab("users")}>
-            <Icon n="users" /> Perdoruesit
-          </button>
-        </div>
+                <div className="admin-page-header__actions">
+                  <div className="admin-page-header__user">
+                    <span className="admin-page-header__user-label">Administrator</span>
+                    <strong>{user.name}</strong>
+                  </div>
+                  <button className="btn btn--ghost admin-page-header__back" onClick={() => navigate("/")}>
+                    <ArrowLeft size={16} strokeWidth={2} />
+                    <span>Kthehu</span>
+                  </button>
+                </div>
+              </div>
 
-        {/* ─── POSTS MODERATION TAB ─────────────────────────────────── */}
-        {tab === "posts" && (
-          <div className="admin-table">
-            <div className="admin-toolbar">
-              <div className="admin-toolbar__filters">
+              <div className="admin-stat-grid">
+                {dashboardStats.map((item) => (
+                  <div key={item.key} className="admin-stat-card admin-stat-card--dashboard">
+                    <div className="admin-stat-card__head">
+                      <p className="admin-stat-card__label">{item.label}</p>
+                      <span className="admin-stat-card__icon">
+                        <Icon n={item.icon} />
+                      </span>
+                    </div>
+                    <p className={`admin-stat-card__val${item.valueClassName ? ` ${item.valueClassName}` : ""}`} style={item.valueStyle}>
+                      {item.value}
+                    </p>
+                    <p className="admin-stat-card__hint">{item.hint}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="admin-tabs admin-tabs--surface">
+                {ADMIN_SECTIONS.map((section) => {
+                  const SectionIcon = section.icon;
+
+                  return (
+                    <button
+                      key={section.id}
+                      className={`admin-tab ${tab === section.id ? "active" : ""}`}
+                      onClick={() => setTab(section.id)}
+                    >
+                      <SectionIcon size={16} strokeWidth={1.9} />
+                      <span>{section.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </header>
+
+            <div className="admin-content">
+              {/* ─── POSTS MODERATION TAB ─────────────────────────────────── */}
+              {tab === "analytics" && <AdminAnalyticsPanel />}
+
+              {tab === "posts" && (
+          <div className="admin-table admin-table--moderation">
+            <div className="admin-toolbar admin-toolbar--moderation">
+              <div className="admin-toolbar__filters admin-toolbar__filters--moderation">
                 <select
                   className="auth-input admin-toolbar__select"
                   value={statusFilter}
@@ -646,151 +791,158 @@ export default function AdminDashboardPage({ user }) {
               </button>
             </div>
 
-            <div className="admin-table-row admin-table-head moderation-row">
-              <span>ID</span>
-              <span>Titulli</span>
-              <span>Lokacioni</span>
-              <span>Cmimi</span>
-              <span>Autori</span>
-              <span>Statusi</span>
-              <span>Veprimet</span>
-            </div>
+            <div className="admin-table__viewport admin-table__viewport--moderation">
+              <div className="admin-table-row admin-table-head moderation-row">
+                <span>ID</span>
+                <span>Titulli</span>
+                <span>Lokacioni</span>
+                <span>Cmimi</span>
+                <span>Autori</span>
+                <span>Statusi</span>
+                <span>Veprimet</span>
+              </div>
 
-            {postsError && (
-              <div className="admin-empty">
-                <p style={{ color: "var(--error)" }}>{postsError}</p>
-              </div>
-            )}
-            {loadingPosts ? (
-              <div className="admin-empty">
-                <p>Duke ngarkuar shpalljet...</p>
-              </div>
-            ) : filteredPosts.length === 0 ? (
-              <div className="admin-empty">
-                <Icon n="house-circle-xmark" style={{ fontSize: "2rem", opacity: 0.25, display: "block", marginBottom: 12 }} />
-                <p>Nuk ka shpallje me kete filter.</p>
-              </div>
-            ) : (
-              filteredPosts.map((item) => (
-                <div className="admin-table-row moderation-row" key={item.id}>
-                  <span className="moderation-id">#{item.idNumber}</span>
-                  <span style={{ display: "grid", gap: 4 }}>
-                    <span style={{ fontWeight: 500, fontSize: ".88rem" }}>{item.title}</span>
-                    {item.isPremium && (
-                      <span className="admin-premium-chip">
-                        Premium{item.premiumOrder ? ` #${item.premiumOrder}` : ""}
-                      </span>
-                    )}
-                  </span>
-                  <span style={{ fontSize: ".82rem", color: "var(--text-muted)" }}>{item.location}</span>
-                  <span style={{ fontSize: ".88rem", fontWeight: 600, color: "var(--gold)" }}>€ {item.price}</span>
-                  <span style={{ fontSize: ".82rem", color: "var(--text-muted)" }}>{item.author}</span>
-                  <span>
-                    <span className={`status-badge status-badge--${item.status || "pending"}`}>
-                      {item.statusBadge || "Wait to confirm"}
+              {postsError && (
+                <div className="admin-empty">
+                  <p style={{ color: "var(--error)" }}>{postsError}</p>
+                </div>
+              )}
+              {loadingPosts ? (
+                <div className="admin-empty">
+                  <p>Duke ngarkuar shpalljet...</p>
+                </div>
+              ) : filteredPosts.length === 0 ? (
+                <div className="admin-empty">
+                  <Icon n="house-circle-xmark" style={{ fontSize: "2rem", opacity: 0.25, display: "block", marginBottom: 12 }} />
+                  <p>Nuk ka shpallje me kete filter.</p>
+                </div>
+              ) : (
+                filteredPosts.map((item) => (
+                  <div className="admin-table-row moderation-row" key={item.id}>
+                    <span className="moderation-id">#{item.idNumber}</span>
+                    <span className="moderation-main">
+                      <span className="moderation-title">{item.title}</span>
+                      {item.isPremium && (
+                        <span className="admin-premium-chip">
+                          Premium{item.premiumOrder ? ` #${item.premiumOrder}` : ""}
+                        </span>
+                      )}
                     </span>
-                  </span>
-                  <div className="admin-table__action-group">
-                    <button
-                      ref={(el) => { actionBtnRefs.current[item.id] = el; }}
-                      style={{ padding: "4px 6px", background: "transparent", border: "1.5px solid var(--navy)", borderRadius: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                      onClick={() => toggleActionMenu(item.id)}
-                      title="Veprimet"
-                    >
-                      <GearSix size={20} color="var(--navy)" />
-                    </button>
-                    {openActionMenu === item.id && createPortal(
-                      <div ref={actionMenuRef} style={{
-                        position: "fixed",
-                        left: menuPos.left,
-                        top: menuPos.openUp ? "auto" : menuPos.top,
-                        bottom: menuPos.openUp ? (window.innerHeight - menuPos.top) : "auto",
-                        zIndex: 9999,
-                        background: "#fff", border: "1px solid var(--border)", borderRadius: 10,
-                        boxShadow: "0 6px 24px rgba(0,0,0,.12)", minWidth: 170, padding: "6px 0",
-                        animation: "fadeIn .15s ease"
-                      }}>
-                        <button
-                          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".85rem", color: "#000", textAlign: "left" }}
-                          onClick={() => { setViewPost(item); setViewImageIndex(0); setOpenActionMenu(null); }}
-                        >
-                          <Icon n="eye" /> Shiko
-                        </button>
-                        {item.status === "pending" && (
-                          <>
+                    <div className="moderation-details">
+                      <span className="moderation-location">{item.location}</span>
+                      <span className="moderation-price">€ {item.price}</span>
+                      <span className="moderation-author">{item.author}</span>
+                      <span className="moderation-status">
+                        <span className={`status-badge status-badge--${item.status || "pending"}`}>
+                          {item.statusBadge || "Wait to confirm"}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="admin-table__action-group moderation-actions">
+                      <button
+                        ref={(el) => { actionBtnRefs.current[item.id] = el; }}
+                        type="button"
+                        className="admin-action-trigger"
+                        onClick={() => toggleActionMenu(item.id)}
+                        title="Veprimet"
+                      >
+                        <Icon n="settings" />
+                      </button>
+                      {openActionMenu === item.id && createPortal(
+                        <div ref={actionMenuRef} className="admin-floating-menu" style={{
+                          position: "fixed",
+                          left: menuPos.left,
+                          top: menuPos.openUp ? "auto" : menuPos.top,
+                          bottom: menuPos.openUp ? (window.innerHeight - menuPos.top) : "auto",
+                        }}>
+                          <button
+                            type="button"
+                            className="admin-floating-menu__item"
+                            onClick={() => { setViewPost(item); setViewImageIndex(0); setOpenActionMenu(null); }}
+                          >
+                            <Icon n="eye" /> Shiko
+                          </button>
+                          {item.status === "pending" && (
+                            <>
+                              <button
+                                type="button"
+                                className="admin-floating-menu__item admin-floating-menu__item--success"
+                                disabled={actionLoading === item.id}
+                                onClick={() => { handleApprove(item.id); setOpenActionMenu(null); }}
+                              >
+                                <Icon n="check" /> Aprovo
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-floating-menu__item admin-floating-menu__item--danger"
+                                disabled={actionLoading === item.id}
+                                onClick={() => { handleReject(item.id); setOpenActionMenu(null); }}
+                              >
+                                <Icon n="xmark" /> Refuzo
+                              </button>
+                            </>
+                          )}
+                          {item.status === "active" && (
                             <button
-                              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".85rem", color: "var(--green, #22c55e)", textAlign: "left" }}
+                              type="button"
+                              className="admin-floating-menu__item admin-floating-menu__item--danger"
+                              disabled={actionLoading === item.id}
+                              onClick={() => { handleReject(item.id); setOpenActionMenu(null); }}
+                            >
+                              <Icon n="ban" /> Çaktivizo
+                            </button>
+                          )}
+                          {item.status === "rejected" && (
+                            <button
+                              type="button"
+                              className="admin-floating-menu__item admin-floating-menu__item--success"
                               disabled={actionLoading === item.id}
                               onClick={() => { handleApprove(item.id); setOpenActionMenu(null); }}
                             >
                               <Icon n="check" /> Aprovo
                             </button>
-                            <button
-                              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".85rem", color: "var(--danger, #ef4444)", textAlign: "left" }}
-                              disabled={actionLoading === item.id}
-                              onClick={() => { handleReject(item.id); setOpenActionMenu(null); }}
-                            >
-                              <Icon n="xmark" /> Refuzo
-                            </button>
-                          </>
-                        )}
-                        {item.status === "active" && (
+                          )}
+                          <div className="admin-floating-menu__divider" />
                           <button
-                            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".85rem", color: "var(--danger, #ef4444)", textAlign: "left" }}
+                            type="button"
+                            className="admin-floating-menu__item admin-floating-menu__item--danger"
                             disabled={actionLoading === item.id}
-                            onClick={() => { handleReject(item.id); setOpenActionMenu(null); }}
+                            onClick={() => { handleAdminDelete(item.id); setOpenActionMenu(null); }}
                           >
-                            <Icon n="ban" /> Çaktivizo
+                            <Icon n="trash" /> Fshi
                           </button>
-                        )}
-                        {item.status === "rejected" && (
-                          <button
-                            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".85rem", color: "var(--green, #22c55e)", textAlign: "left" }}
-                            disabled={actionLoading === item.id}
-                            onClick={() => { handleApprove(item.id); setOpenActionMenu(null); }}
-                          >
-                            <Icon n="check" /> Aprovo
-                          </button>
-                        )}
-                        <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
-                        <button
-                          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".85rem", color: "var(--danger, #ef4444)", textAlign: "left" }}
-                          disabled={actionLoading === item.id}
-                          onClick={() => { handleAdminDelete(item.id); setOpenActionMenu(null); }}
-                        >
-                          <Icon n="trash" /> Fshi
-                        </button>
-                      </div>,
-                      document.body
-                    )}
+                        </div>,
+                        document.body
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         )}
 
         {/* ─── REORDER TAB ──────────────────────────────────────────── */}
-        {tab === "reorder" && (
-          <div className="admin-table">
-            <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
-              <div style={{ display: "flex", gap: 0 }}>
+              {tab === "reorder" && (
+          <div className="admin-table admin-table--reorder">
+            <div className="admin-toolbar admin-toolbar--reorder" style={{ flexWrap: "wrap", gap: 10 }}>
+              <div className="admin-segmented admin-segmented--experience">
                 <button
-                  className={`btn ${dragExperience === "villas" ? "btn--primary" : "btn--ghost"}`}
+                  className={`btn admin-segmented__option ${dragExperience === "villas" ? "btn--primary" : "btn--ghost"}`}
                   style={{ borderRadius: "8px 0 0 8px", padding: "7px 18px", fontSize: ".85rem", color: dragExperience === "villas" ? undefined : "#000" }}
                   onClick={() => { setDragExperience("villas"); setEditingOrder(null); }}
                 >
                   <Icon n="house" /> Villa ({dragVillas.length})
                 </button>
                 <button
-                  className={`btn ${dragExperience === "apartments" ? "btn--primary" : "btn--ghost"}`}
+                  className={`btn admin-segmented__option ${dragExperience === "apartments" ? "btn--primary" : "btn--ghost"}`}
                   style={{ borderRadius: "0 8px 8px 0", padding: "7px 18px", fontSize: ".85rem", color: dragExperience === "apartments" ? undefined : "#000" }}
                   onClick={() => { setDragExperience("apartments"); setEditingOrder(null); }}
                 >
                   <Icon n="building" /> Apartamente ({dragApartments.length})
                 </button>
               </div>
-              <div className="admin-toolbar__filters">
+              <div className="admin-toolbar__filters admin-toolbar__filters--reorder">
                 <input
                   className="auth-input admin-toolbar__field"
                   placeholder="Kerko me ID numerin..."
@@ -801,81 +953,83 @@ export default function AdminDashboardPage({ user }) {
               </div>
             </div>
 
-            {loadingDrag ? (
-              <div className="admin-empty">
-                <p>Duke ngarkuar postet aktive...</p>
-              </div>
-            ) : currentDragList.length === 0 ? (
-              <div className="admin-empty">
-                <Icon n="list" style={{ fontSize: "2rem", opacity: 0.25, display: "block", marginBottom: 12 }} />
-                <p>Nuk ka {dragExperience === "apartments" ? "apartamente" : "villa"} aktive per renditje.</p>
-              </div>
-            ) : (
-              filteredDragPosts
-                .map(({ item, realIndex }) => (
-                <div
-                  className="admin-table-row drag-row"
-                  key={item.id}
-                >
-                  <span className="drag-order">{realIndex + 1}</span>
-                  <span className="drag-id">#{item.idNumber}</span>
-                  <span className="drag-title">{item.title}</span>
-                  <span className="drag-author">{item.author}</span>
-                  <span className="drag-actions">
-                    {editingOrder === item.id ? (
-                      <span className="drag-id-edit">
-                        <input
-                          type="number"
-                          className="drag-id-input"
-                          value={editOrderValue}
-                          onChange={(e) => setEditOrderValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveEditOrder(item.id);
-                            if (e.key === "Escape") handleCancelEditOrder();
-                          }}
-                          autoFocus
-                          min="1"
-                          max={currentDragList.length}
-                          placeholder="Pozita"
-                        />
-                        <button
-                          className="btn btn--success drag-id-btn"
-                          onClick={() => handleSaveEditOrder(item.id)}
-                          disabled={savingOrder}
-                          title="Ruaj"
-                        >
-                          <Icon n="check" />
-                        </button>
-                        <button
-                          className="btn btn--ghost drag-id-btn"
-                          onClick={handleCancelEditOrder}
-                          title="Anulo"
-                          style={{ color: '#14213D', borderColor: '#14213D' }}
-                        >
-                          <Icon n="xmark" />
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        className="btn btn--ghost drag-edit-btn"
-                        onClick={() => handleStartEditOrder(item.id, realIndex)}
-                        title="Ndrysho renditjen"
-                      >
-                        <Icon n="pen" />
-                      </button>
-                    )}
-                  </span>
+            <div className="admin-table__viewport admin-table__viewport--reorder">
+              {loadingDrag ? (
+                <div className="admin-empty">
+                  <p>Duke ngarkuar postet aktive...</p>
                 </div>
-              ))
-            )}
+              ) : currentDragList.length === 0 ? (
+                <div className="admin-empty">
+                  <Icon n="list" style={{ fontSize: "2rem", opacity: 0.25, display: "block", marginBottom: 12 }} />
+                  <p>Nuk ka {dragExperience === "apartments" ? "apartamente" : "villa"} aktive per renditje.</p>
+                </div>
+              ) : (
+                filteredDragPosts
+                  .map(({ item, realIndex }) => (
+                  <div
+                    className="admin-table-row drag-row"
+                    key={item.id}
+                  >
+                    <span className="drag-order">{realIndex + 1}</span>
+                    <span className="drag-id">#{item.idNumber}</span>
+                    <span className="drag-title">{item.title}</span>
+                    <span className="drag-author">{item.author}</span>
+                    <span className="drag-actions">
+                      {editingOrder === item.id ? (
+                        <span className="drag-id-edit">
+                          <input
+                            type="number"
+                            className="drag-id-input"
+                            value={editOrderValue}
+                            onChange={(e) => setEditOrderValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSaveEditOrder(item.id);
+                              if (e.key === "Escape") handleCancelEditOrder();
+                            }}
+                            autoFocus
+                            min="1"
+                            max={currentDragList.length}
+                            placeholder="Pozita"
+                          />
+                          <button
+                            className="btn btn--success drag-id-btn"
+                            onClick={() => handleSaveEditOrder(item.id)}
+                            disabled={savingOrder}
+                            title="Ruaj"
+                          >
+                            <Icon n="check" />
+                          </button>
+                          <button
+                            className="btn btn--ghost drag-id-btn"
+                            onClick={handleCancelEditOrder}
+                            title="Anulo"
+                            style={{ color: '#14213D', borderColor: '#14213D' }}
+                          >
+                            <Icon n="xmark" />
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          className="btn btn--ghost drag-edit-btn"
+                          onClick={() => handleStartEditOrder(item.id, realIndex)}
+                          title="Ndrysho renditjen"
+                        >
+                          <Icon n="pen" />
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
         {/* ─── USERS TAB ────────────────────────────────────────────── */}
-        {tab === "premium" && <PaidPlansAdminPanel />}
+              {tab === "premium" && <PaidPlansAdminPanel />}
 
         {/* Premium management tab */}
-        {false && (
+              {tab === "premium-manager" && (
           <div className="admin-table">
             <div className="admin-toolbar" style={{ flexWrap: "wrap", gap: 10 }}>
               <div style={{ display: "flex", gap: 0 }}>
@@ -1122,7 +1276,7 @@ export default function AdminDashboardPage({ user }) {
           </div>
         )}
 
-        {tab === "users" && (
+              {tab === "users" && (
           <div className="admin-table">
             <div className="admin-toolbar">
               <input
@@ -1185,25 +1339,23 @@ export default function AdminDashboardPage({ user }) {
                   <div className="admin-table__action-group">
                     <button
                       ref={(el) => { userBtnRefs.current[item.id] = el; }}
-                      style={{ padding: "4px 6px", background: "transparent", border: "1.5px solid var(--navy)", borderRadius: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      type="button"
+                      className="admin-action-trigger"
                       onClick={() => toggleUserMenu(item.id)}
                       title="Veprimet"
                     >
-                      <GearSix size={20} color="var(--navy)" />
+                      <Icon n="settings" />
                     </button>
                     {openActionMenu === item.id && createPortal(
-                      <div ref={actionMenuRef} style={{
+                      <div ref={actionMenuRef} className="admin-floating-menu" style={{
                         position: "fixed",
                         left: menuPos.left,
                         top: menuPos.openUp ? "auto" : menuPos.top,
                         bottom: menuPos.openUp ? (window.innerHeight - menuPos.top) : "auto",
-                        zIndex: 9999,
-                        background: "#fff", border: "1px solid var(--border)", borderRadius: 10,
-                        boxShadow: "0 6px 24px rgba(0,0,0,.12)", minWidth: 160, padding: "6px 0",
-                        animation: "fadeIn .15s ease"
                       }}>
                         <button
-                          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: ".85rem", color: "var(--danger, #ef4444)", textAlign: "left" }}
+                          type="button"
+                          className="admin-floating-menu__item admin-floating-menu__item--danger"
                           disabled={item.id === user.id}
                           onClick={() => { removeUser(item.id); setOpenActionMenu(null); }}
                           title={item.id === user.id ? "Nuk mund ta fshish veten" : "Fshi perdorues"}
@@ -1219,6 +1371,9 @@ export default function AdminDashboardPage({ user }) {
             )}
           </div>
         )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ─── VIEW POST DETAIL MODAL ─────────────────────────────────── */}
@@ -1374,7 +1529,7 @@ export default function AdminDashboardPage({ user }) {
                       </p>
                     )}
 
-                    {false && premiumDraft.isPremium && (
+                    {p.showLegacyPremiumControls && premiumDraft.isPremium && (
                       <div className="admin-premium-panel__controls">
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label>Pozicioni premium</label>
@@ -1419,7 +1574,7 @@ export default function AdminDashboardPage({ user }) {
                       </div>
                     )}
 
-                    {false && p.premiumExpiresAt && premiumDraft.isPremium && (
+                    {p.showLegacyPremiumControls && p.premiumExpiresAt && premiumDraft.isPremium && (
                       <p className="admin-premium-note" style={{ marginTop: 8 }}>
                         <Icon n="calendar" /> Skadon më: <strong>
                           {new Date(p.premiumExpiresAt).toLocaleDateString("sq-AL", { day: "numeric", month: "long", year: "numeric" })}

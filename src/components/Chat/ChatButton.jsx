@@ -1,8 +1,18 @@
 import { useState } from "react";
-import { ChatDots } from "@phosphor-icons/react";
+import { Icon } from "../Shared.jsx";
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { getOrCreateConversation } from "../../services/chat.js";
 
-export default function ChatButton({ listingId, listingTitle, ownerId, ownerName = "Pronari", currentUser, onNavigate, size = "lg" }) {
+export default function ChatButton({
+  listingId,
+  listingTitle,
+  ownerId,
+  ownerName = "",
+  currentUser,
+  onNavigate,
+  size = "lg",
+}) {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   if (!currentUser || !ownerId || currentUser.id === ownerId) return null;
@@ -11,15 +21,15 @@ export default function ChatButton({ listingId, listingTitle, ownerId, ownerName
     if (loading) return;
     setLoading(true);
     try {
-      const convId = await getOrCreateConversation(
+      const conversationId = await getOrCreateConversation(
         currentUser.id,
         ownerId,
         listingId,
         listingTitle,
-        currentUser.name || "Perdorues",
-        ownerName,
+        currentUser.name || t("messages.defaultUser"),
+        ownerName || (lang === "en" ? "Owner" : "Pronari")
       );
-      onNavigate(convId);
+      onNavigate(conversationId);
     } catch (error) {
       console.error("Failed to start conversation:", error);
     } finally {
@@ -29,8 +39,8 @@ export default function ChatButton({ listingId, listingTitle, ownerId, ownerName
 
   return (
     <button className={`btn btn--chat btn--${size}`} onClick={handleClick} disabled={loading}>
-      <ChatDots aria-hidden="true" />
-      {loading ? "Duke hapur..." : "Dërgo Mesazh"}
+      <Icon n="message" />
+      {loading ? t("messages.startingChat") : t("details.sendMessage")}
     </button>
   );
 }

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CaretDown, Envelope, MapPin, Phone, MagnifyingGlass, Sparkle, Tag } from "@phosphor-icons/react";
 import ExperienceSwitch from "../components/ExperienceSwitch.jsx";
 import { Footer, Icon, Navbar, PremiumSection, PropertyCard } from "../components/Shared.jsx";
-import PricingSection from "../components/PricingSection.jsx";
 import { getExperienceConfig } from "../config/experiences.js";
+import { SITE_SETTINGS, buildContactMailtoHref } from "../config/siteSettings.js";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { listListings } from "../services/listings.js";
 import { listPublicPosts } from "../services/posts.js";
@@ -62,17 +61,11 @@ const formatLocationCountLabel = (location, counts = {}, experience = "villas") 
   return `${location} (${formattedCount})`;
 };
 
-const FIELD_ICON_MAP = {
-  "location-dot": MapPin,
-  "tag": Tag,
-};
-
 function SelectField({ label, icon, value, onChange, options }) {
-  const IconComponent = FIELD_ICON_MAP[icon];
   return (
     <div className="search-strip__cell">
       <span className="search-field__label">
-        {IconComponent && <IconComponent aria-hidden="true" />}
+        {icon && <Icon n={icon} />}
         {label}
       </span>
       <div className="search-native-wrap">
@@ -83,7 +76,7 @@ function SelectField({ label, icon, value, onChange, options }) {
             </option>
           ))}
         </select>
-        <CaretDown className="search-native-arrow" aria-hidden="true" />
+        <Icon n="chevron-down" className="search-native-arrow" />
       </div>
     </div>
   );
@@ -111,6 +104,7 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
   const [pill, setPill] = useState("");
   const [error, setError] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
   const keywordFieldRef = useRef(null);
 
   useEffect(() => {
@@ -157,6 +151,17 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
       document.removeEventListener("touchstart", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (locationState.state?.scrollTarget !== "hero-bg") return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const heroBackground = document.getElementById("hero-bg") || document.querySelector(".hero__bg");
+      heroBackground?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [locationState.key, locationState.state]);
 
   const experiencePosts = useMemo(
     () => filterListingsByExperience(posts, experience),
@@ -251,6 +256,34 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
     });
   };
 
+  const setContactField = (field, value) => {
+    setContactForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleContactSubmit = (event) => {
+    event.preventDefault();
+
+    const name = contactForm.name.trim();
+    const email = contactForm.email.trim();
+    const message = contactForm.message.trim();
+    if (!name || !email || !message) return;
+
+    const mailtoHref = buildContactMailtoHref({
+      subject: `${SITE_SETTINGS.siteName} - ${t(`${expKey}.contactTitle`)}`,
+      body: [
+        `${t("home.formName")}: ${name}`,
+        `${t("home.formEmail")}: ${email}`,
+        "",
+        `${t("home.formMessage")}:`,
+        message,
+      ].join("\n"),
+    });
+
+    if (typeof window !== "undefined") {
+      window.location.href = mailtoHref;
+    }
+  };
+
   const handleSearch = (event) => {
     event.preventDefault();
     setPill("");
@@ -262,7 +295,7 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
       <Navbar user={user} onLogout={onLogout} experience={experience} />
 
       <section className="hero">
-        <div className="hero__bg" />
+        <div id="hero-bg" className="hero__bg" />
         <div className="hero__content">
           <div className="hero__topbar">
             <ExperienceSwitch
@@ -286,7 +319,7 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
             <form className="search-strip" onSubmit={handleSearch} aria-label={t(`${expKey}.searchAriaLabel`)}>
               <div ref={keywordFieldRef} className="search-strip__cell search-strip__cell--keyword">
                 <span className="search-field__label">
-                  <MagnifyingGlass aria-hidden="true" />
+                  <Icon n="magnifying-glass" />
                   {t("home.searchLabel")}
                 </span>
                 <div className={`search-text ${showSuggestions && suggestions.length ? "is-open" : ""}`}>
@@ -301,7 +334,7 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
                     onFocus={() => setShowSuggestions(true)}
                     aria-label={t("home.smartSearch")}
                   />
-                  <Sparkle className="search-text__icon" aria-hidden="true" />
+                  <Icon n="sparkles" className="search-text__icon" />
                 </div>
                 {showSuggestions && suggestions.length > 0 && (
                   <ul className="search-floating-menu search-floating-menu--suggest">
@@ -330,7 +363,7 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
               <SelectField label={t("home.priceLabel")} icon="tag" value={maxPrice} onChange={setMaxPrice} options={priceOptions} />
 
               <button className="search-strip__btn" type="submit">
-                <MagnifyingGlass aria-hidden="true" />
+                <Icon n="magnifying-glass" />
                 {t(`${expKey}.searchBtn`)}
               </button>
             </form>
@@ -339,7 +372,7 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
       </section>
 
       {/* Premium section: replaces the previous stats block for both experiences. */}
-      <PremiumSection collectionName={experience} limitCount={6} />
+      <PremiumSection user={user} collectionName={experience} limitCount={6} />
 
       <section className="listings" id="categories">
         <div className="container">
@@ -396,8 +429,6 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
         </div>
       </section>
 
-      <PricingSection user={user} sectionId="services" />
-
       <section className="contact" id="contact">
         <div className="container contact__inner">
           <div>
@@ -405,24 +436,25 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
             <h2 className="section-title">{t(`${expKey}.contactTitle`)}</h2>
             <div style={{ marginTop: 24 }}>
               <div className="contact__item">
-                <MapPin aria-hidden="true" />
+                <span className="contact__icon-box"><Icon n="location-dot" size={20} /></span>
                 <div>
                   <strong>{t("home.address")}</strong>
                   <span>{t("home.addressValue")}</span>
                 </div>
               </div>
               <div className="contact__item">
-                <Phone aria-hidden="true" />
-                <div>
-                  <strong>{t("home.phoneLabel")}</strong>
-                  <span>{t("home.phoneValue")}</span>
-                </div>
-              </div>
-              <div className="contact__item">
-                <Envelope aria-hidden="true" />
+                <a
+                  className="contact__icon-box contact__icon-box--link"
+                  href={SITE_SETTINGS.contact.emailHref}
+                  aria-label={`${t("home.emailLabel")}: ${SITE_SETTINGS.contact.email}`}
+                >
+                  <Icon n="envelope" size={20} />
+                </a>
                 <div>
                   <strong>{t("home.emailLabel")}</strong>
-                  <span>{t("home.emailValue")}</span>
+                  <a className="contact__value-link" href={SITE_SETTINGS.contact.emailHref}>
+                    {SITE_SETTINGS.contact.email}
+                  </a>
                 </div>
               </div>
             </div>
@@ -430,21 +462,41 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
           <div className="form-card contact__form-card">
             <h3 className="contact__form-card-title">{t(`${expKey}.contactCardTitle`)}</h3>
             <p className="contact__form-card-copy">{t(`${expKey}.contactCardCopy`)}</p>
-            <div className="form-group">
-              <label>{t("home.formName")}</label>
-              <input type="text" placeholder={t("home.formNamePlaceholder")} />
-            </div>
-            <div className="form-group">
-              <label>{t("home.formEmail")}</label>
-              <input type="email" placeholder={t("home.formEmailPlaceholder")} />
-            </div>
-            <div className="form-group">
-              <label>{t("home.formMessage")}</label>
-              <textarea rows={4} placeholder={t("home.formMessagePlaceholder")} />
-            </div>
-            <button className="submit-btn" type="button">
-              {t(`${expKey}.contactSubmit`)}
-            </button>
+            <form onSubmit={handleContactSubmit}>
+              <div className="form-group">
+                <label>{t("home.formName")}</label>
+                <input
+                  type="text"
+                  placeholder={t("home.formNamePlaceholder")}
+                  value={contactForm.name}
+                  onChange={(event) => setContactField("name", event.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>{t("home.formEmail")}</label>
+                <input
+                  type="email"
+                  placeholder={t("home.formEmailPlaceholder")}
+                  value={contactForm.email}
+                  onChange={(event) => setContactField("email", event.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>{t("home.formMessage")}</label>
+                <textarea
+                  rows={4}
+                  placeholder={t("home.formMessagePlaceholder")}
+                  value={contactForm.message}
+                  onChange={(event) => setContactField("message", event.target.value)}
+                  required
+                />
+              </div>
+              <button className="submit-btn" type="submit">
+                {t(`${expKey}.contactSubmit`)}
+              </button>
+            </form>
           </div>
         </div>
       </section>

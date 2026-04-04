@@ -1,14 +1,17 @@
-import { EXPERIENCE_ORDER, getExperienceConfig } from "../config/experiences.js";
+import { EXPERIENCE_ORDER } from "../config/experiences.js";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { normalizeExperience } from "../utils/experience.js";
 
-export default function ExperienceSwitch({ value = "villas", onChange, className = "", ariaLabel = "Zgjidh eksperiencen" }) {
+export default function ExperienceSwitch({ value = "villas", onChange, className = "", ariaLabel = "" }) {
   const activeValue = normalizeExperience(value);
+  const { t } = useLanguage();
+  const resolvedAriaLabel = ariaLabel || t("common.category");
 
   return (
-    <div className={`experience-switch ${className}`.trim()} role="tablist" aria-label={ariaLabel}>
+    <div className={`experience-switch ${className}`.trim()} role="tablist" aria-label={resolvedAriaLabel}>
       {EXPERIENCE_ORDER.map((item) => {
-        const config = getExperienceConfig(item);
         const isActive = activeValue === item;
+        const expKey = item === "apartments" ? "exp.apartments" : "exp.villas";
 
         return (
           <button
@@ -19,8 +22,8 @@ export default function ExperienceSwitch({ value = "villas", onChange, className
             className={`experience-switch__option ${isActive ? "is-active" : ""}`}
             onClick={() => onChange?.(item)}
           >
-            <span className="experience-switch__label">{config.label}</span>
-            <span className="experience-switch__hint">{config.hero.highlight}</span>
+            <span className="experience-switch__label">{t(`${expKey}.label`)}</span>
+            <span className="experience-switch__hint">{t(`${expKey}.heroHighlight`)}</span>
           </button>
         );
       })}

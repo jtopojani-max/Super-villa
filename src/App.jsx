@@ -19,6 +19,7 @@ const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage.jsx"));
 const VillasPage = lazy(() => import("./pages/VillasPage.jsx"));
 const VillaDetailsPage = lazy(() => import("./pages/VillaDetailsPage.jsx"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage.jsx"));
+const PricingPlansPage = lazy(() => import("./pages/PricingPlansPage.jsx"));
 
 function RequireAuth({ user, children }) {
   if (!user) return <Navigate to="/login" replace />;
@@ -180,7 +181,8 @@ function AppInner() {
     displayLocation.pathname === "/apartments" ||
     displayLocation.pathname.startsWith("/apartments/") ||
     displayLocation.pathname.startsWith("/villa/") ||
-    displayLocation.pathname.startsWith("/messages");
+    displayLocation.pathname.startsWith("/messages") ||
+    displayLocation.pathname.startsWith("/pricing-plans");
 
   return (
     <>
@@ -257,6 +259,7 @@ function AppInner() {
                 </RequireAuth>
               }
             />
+            <Route path="/pricing-plans" element={<PricingPlansPage {...shared} />} />
             <Route path="/create-post" element={<Navigate to="/create" replace />} />
             <Route
               path="/admin"

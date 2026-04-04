@@ -1,28 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Bank,
-  Buildings,
-  Check,
-  CheckCircle,
-  ClipboardText,
-  CloudArrowUp,
-  CurrencyBtc,
-  Headset,
-  Lightning,
-  ShieldCheck,
-  WarningCircle,
-  X,
-} from "@phosphor-icons/react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Icon } from "./Shared.jsx";
+import { QRCodeSVG } from "qrcode.react";
 import { buildPaymentReference, isPaymentConfigComplete, PAYMENT_CONFIG } from "../config/pricing.js";
+import { SITE_SETTINGS } from "../config/siteSettings.js";
 import {
-  PAYMENT_PROOF_INPUT_ACCEPT,
-  PAYMENT_PROOF_MAX_BYTES,
   submitPaymentProof,
 } from "../services/payments.js";
 import { listMyPosts } from "../services/posts.js";
+import { db } from "../firebase.js";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
-const COPY = {
+const PRICING_COPY = {
+  sq: {
   eyebrow: "Paketa",
   title: "Zgjidh paketen e duhur per pronen ose biznesin tuaj",
   subtitle:
@@ -32,10 +23,10 @@ const COPY = {
     "Aktivizimi i paketes behet vetem pasi admini te verifikoje pagesen me transfer bankar ose crypto.",
   noticePoints: ["Transfer bankar", "Crypto", "Support profesional"],
   trust: [
-    { icon: Lightning, title: "Aktivizim i shpejte", description: "Kerkesa kalon menjehere ne verifikim sapo te dergohet prova e pageses." },
-    { icon: ShieldCheck, title: "Pagese e sigurt", description: "Pranojme vetem transfer bankar dhe crypto me reference te qarte." },
-    { icon: Headset, title: "Support profesional", description: "Ekipi yne ju ndihmon gjate aktivizimit dhe prezantimit te prones." },
-    { icon: Buildings, title: "Per individe dhe biznese", description: "Nga nje shpallje falas deri te profil biznesi me menaxhim profesional." },
+    { icon: "bolt", title: "Aktivizim i shpejte", description: "Kerkesa kalon menjehere ne verifikim sapo te dergohet prova e pageses." },
+    { icon: "shield-check", title: "Pagese e sigurt", description: "Pranojme vetem transfer bankar dhe crypto me reference te qarte." },
+    { icon: "support-agent", title: "Support profesional", description: "Ekipi yne ju ndihmon gjate aktivizimit dhe prezantimit te prones." },
+    { icon: "building", title: "Per individe dhe biznese", description: "Nga nje shpallje falas deri te profil biznesi me menaxhim profesional." },
   ],
   faqEyebrow: "FAQ",
   faqTitle: "Pyetje te shpeshta",
@@ -49,7 +40,8 @@ const COPY = {
       id: "basic",
       name: "Basic Falas",
       badge: "Per Fillim",
-      price: "0EUR",
+      price: "0",
+      currency: "€",
       cycle: "pa pagese",
       description: "Per publikim te shpejte dhe hyrje ne platforme pa kosto.",
       cta: "Posto Falas",
@@ -59,7 +51,8 @@ const COPY = {
       id: "premium",
       name: "Premium",
       badge: "Me e Preferuara",
-      price: "15EUR",
+      price: "15",
+      currency: "€",
       cycle: "/ 30 dite",
       description: "Per pronare qe duan me shume dukshmeri dhe renditje me te forte.",
       cta: "Zgjidh Premium",
@@ -69,7 +62,8 @@ const COPY = {
       id: "business-pro",
       name: "Business Pro",
       badge: "Per Biznese",
-      price: "90EUR",
+      price: "90",
+      currency: "€",
       cycle: "/ 3 muaj",
       description: "Per agjenci dhe kompani qe duan profil serioz dhe volum listimesh.",
       cta: "Aktivizo Business Pro",
@@ -81,8 +75,21 @@ const COPY = {
     subtitle: "Zgjidh metoden e pageses, kopjo detajet dhe dergo proven per verifikim manual nga admini.",
     packageLabel: "Paketa",
     priceLabel: "Cmimi",
+    paymentMethodsLabel: "Metodat e pageses",
     bankMethod: "Transfer bankar",
     cryptoMethod: "Crypto",
+    bankContactTitle: "Na shkruani per transfer bankar",
+    bankContactDescription: "Shkruani mesazhin tuaj dhe ne do t'ju kontaktojme me te dhenat e pageses.",
+    bankContactName: "Emri juaj",
+    bankContactNamePlaceholder: "P.sh. Ardi Shala",
+    bankContactEmail: "Email juaj",
+    bankContactEmailPlaceholder: "email@shembull.com",
+    bankContactMessage: "Mesazhi",
+    bankContactMessagePlaceholder: "P.sh. Dua te aktivizoj paketen Premium per pronen time...",
+    bankContactSend: "Dergo mesazhin",
+    bankContactSending: "Po dergohet...",
+    bankContactSuccess: "Mesazhi u dergua me sukses! Do t'ju kontaktojme se shpejti.",
+    bankContactError: "Nuk u arrit te dergohet mesazhi. Provoni perseri.",
     bankCardTitle: "Detajet per transfer bankar",
     cryptoCardTitle: "Detajet per pagese me crypto",
     beneficiary: "Emri i perfituesit",
@@ -107,6 +114,7 @@ const COPY = {
     phonePlaceholder: "+383 49 000 000",
     listing: "Listimi per Premium",
     listingPlaceholder: "Zgjidh listimin",
+    loadingListings: "Duke ngarkuar...",
     businessName: "Emri i biznesit",
     businessNamePlaceholder: "P.sh. emri i agjencise ose kompanise",
     transactionId: "Transaction ID / reference shtese",
@@ -129,6 +137,10 @@ const COPY = {
     successTitle: "Kerkesa u dergua me sukses",
     successMessage: "Kerkesa juaj per aktivizim u dergua me sukses. Aktivizimi do te behet pasi admini te verifikoje pagesen.",
     successReference: "Referenca juaj",
+    authRequired: "Duhet te jeni te kycur per te derguar kerkesen.",
+    serviceNotFound: "Sherbimi nuk u gjet. Ju lutem kontaktoni administratorin.",
+    invalidArgument: "Te dhena te pasakta. Ju lutem kontrolloni fushat.",
+    alreadyExists: "Kjo kerkese ekziston tashme. Ju lutem provoni perseri.",
     validation: {
       customerName: "Shkruani emrin e klientit ose kompanise.",
       email: "Shkruani nje email valid.",
@@ -141,15 +153,175 @@ const COPY = {
     },
     submitError: "Nuk u arrit te dergohet prova e pageses. Ju lutem provoni perseri pas pak.",
   },
+  },
+  en: {
+    eyebrow: "Plans",
+    title: "Choose the right plan for your property or business",
+    subtitle:
+      "Three clear plans for more visibility, stronger ranking and activation after admin verification.",
+    noticeTitle: "Fast activation and secure payment",
+    activationNote:
+      "The plan is activated only after an admin verifies the payment by bank transfer or crypto.",
+    noticePoints: ["Bank transfer", "Crypto", "Professional support"],
+    trust: [
+      { icon: "bolt", title: "Fast activation", description: "Your request goes straight to verification as soon as payment proof is submitted." },
+      { icon: "shield-check", title: "Secure payment", description: "We accept only bank transfer and crypto with a clear payment reference." },
+      { icon: "support-agent", title: "Professional support", description: "Our team helps you during activation and presentation of your property." },
+      { icon: "building", title: "For individuals and businesses", description: "From one free listing to a business profile with professional management." },
+    ],
+    faqEyebrow: "FAQ",
+    faqTitle: "Frequently asked questions",
+    faqItems: [
+      { question: "When is a paid plan activated?", answer: "A paid plan is activated only after the payment is verified and approved by the administrator." },
+      { question: "Which payment methods are accepted?", answer: "We accept only bank transfer and crypto. We do not use cards, PayPal, Stripe, Apple Pay or Google Pay." },
+      { question: "How does Premium work for listings?", answer: "For Premium, choose the listing inside the form. The request is saved as pending and the listing becomes premium only after approval." },
+    ],
+    plans: [
+      {
+        id: "basic",
+        name: "Free Basic",
+        badge: "Starter",
+        price: "0",
+        currency: "\u20ac",
+        cycle: "free",
+        description: "For quick publishing and getting started on the platform at no cost.",
+        cta: "Post for Free",
+        features: [
+          "1 standard listing",
+          "Up to 10 photos",
+          "Normal publishing",
+          "Standard ranking in search",
+          "Listing editing",
+          "Basic contact with interested users",
+        ],
+      },
+      {
+        id: "premium",
+        name: "Premium",
+        badge: "Most Popular",
+        price: "15",
+        currency: "\u20ac",
+        cycle: "/ 30 days",
+        description: "For owners who want more visibility and stronger placement.",
+        cta: "Choose Premium",
+        features: [
+          "1 premium listing and 2 standard listings",
+          "30 photos",
+          "High priority in search and category pages",
+          "Top or Premium badge",
+          "Automatic listing refresh",
+          "Highlighted contact with WhatsApp button",
+          "Basic stats and faster approval",
+        ],
+      },
+      {
+        id: "business-pro",
+        name: "Business Pro",
+        badge: "For Businesses",
+        price: "90",
+        currency: "\u20ac",
+        cycle: "/ 3 months",
+        description: "For agencies and companies that want a serious profile and more listing volume.",
+        cta: "Activate Business Pro",
+        features: [
+          "Up to 20 active listings",
+          "Business profile with name, logo and professional badge",
+          "High priority in ranking and stronger visibility",
+          "Detailed statistics and highlighted contact for leads",
+          "Priority support",
+          "More professional listing management",
+          "1 professional photo set from our staff",
+          "Help with visual preparation and photo selection",
+        ],
+      },
+    ],
+    modal: {
+      title: "Activate plan",
+      subtitle: "Choose the payment method, copy the details and send proof for manual admin verification.",
+      packageLabel: "Plan",
+      priceLabel: "Price",
+      paymentMethodsLabel: "Payment methods",
+      bankMethod: "Bank transfer",
+      cryptoMethod: "Crypto",
+      bankContactTitle: "Message us for a bank transfer",
+      bankContactDescription: "Send your message and we will contact you with the payment details.",
+      bankContactName: "Your name",
+      bankContactNamePlaceholder: "e.g. Ardi Shala",
+      bankContactEmail: "Your email",
+      bankContactEmailPlaceholder: "email@example.com",
+      bankContactMessage: "Message",
+      bankContactMessagePlaceholder: "e.g. I want to activate the Premium plan for my property...",
+      bankContactSend: "Send message",
+      bankContactSending: "Sending...",
+      bankContactSuccess: "Message sent successfully. We will contact you shortly.",
+      bankContactError: "The message could not be sent. Please try again.",
+      bankCardTitle: "Bank transfer details",
+      cryptoCardTitle: "Crypto payment details",
+      beneficiary: "Beneficiary name",
+      iban: "IBAN",
+      bankName: "Bank name",
+      reference: "Payment reference",
+      wallet: "Wallet address",
+      network: "Network",
+      currency: "Currency / Coin",
+      copy: "Copy",
+      copyAll: "Copy details",
+      copied: "Copied",
+      configureWarning: "Set the real payment details in configuration before publishing to production.",
+      verificationNotice: "Activation is not automatic. Use the exact reference and wait for administrator verification.",
+      formTitle: "Send payment proof",
+      formSubtitle: "Fill in the details and upload the payment proof. The request will be saved with pending status.",
+      customerName: "Customer / company name",
+      customerNamePlaceholder: "e.g. Ardi Shala or company name",
+      email: "Email",
+      emailPlaceholder: "email@company.com",
+      phone: "Phone",
+      phonePlaceholder: "+383 49 000 000",
+      listing: "Listing for Premium",
+      listingPlaceholder: "Choose listing",
+      loadingListings: "Loading...",
+      businessName: "Business name",
+      businessNamePlaceholder: "e.g. agency or company name",
+      transactionId: "Transaction ID / extra reference",
+      transactionIdPlaceholder: "Optional, if provided by the bank or wallet",
+      premiumListingHint: "Premium is activated for one specific listing after the admin approves the request.",
+      businessHint: "Business Pro is activated at profile level after the admin verifies the payment.",
+      noListings: "For Premium, you need at least one created listing. Create a listing first and then submit the request.",
+      proof: "Payment proof",
+      proofHint: "JPG, PNG, WEBP or PDF accepted up to 8 MB.",
+      notes: "Additional notes",
+      notesPlaceholder: "e.g. property name, listing number or any note for our team.",
+      submit: "Send payment proof",
+      submitting: "Sending...",
+      close: "Close",
+      selectFile: "Upload proof",
+      replaceFile: "Replace file",
+      removeFile: "Remove file",
+      qrCaption: "QR preview for the wallet",
+      qrMeta: "Verify the exact address and network before sending.",
+      successTitle: "Request sent successfully",
+      successMessage: "Your activation request was sent successfully. Activation will happen after the admin verifies the payment.",
+      successReference: "Your reference",
+      authRequired: "You need to be logged in to send the request.",
+      serviceNotFound: "The service was not found. Please contact the administrator.",
+      invalidArgument: "Invalid data. Please check the fields.",
+      alreadyExists: "This request already exists. Please try again.",
+      validation: {
+        customerName: "Enter the customer or company name.",
+        email: "Enter a valid email.",
+        phone: "Enter a valid phone number.",
+        listingId: "Choose the listing that should be upgraded to Premium.",
+        businessName: "Enter the business or company name.",
+        proof: "Upload the payment proof.",
+        proofType: "The file must be JPG, PNG, WEBP or PDF.",
+        proofSize: "The file is larger than 8 MB. Please upload a lighter version.",
+      },
+      submitError: "The payment proof could not be sent. Please try again shortly.",
+    },
+  },
 };
 
-const formatBytes = (value) => {
-  if (!Number.isFinite(value) || value <= 0) return "0 KB";
-  const units = ["B", "KB", "MB", "GB"];
-  const exponent = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
-  const nextValue = value / 1024 ** exponent;
-  return `${nextValue >= 10 ? Math.round(nextValue) : nextValue.toFixed(1)} ${units[exponent]}`;
-};
+const getPricingCopy = (lang = "sq") => PRICING_COPY[lang] || PRICING_COPY.sq;
 
 const isValidEmail = (value) => /\S+@\S+\.\S+/.test(value);
 const isValidPhone = (value) => /^[0-9+\s()/-]{6,20}$/.test(String(value || "").trim());
@@ -164,6 +336,9 @@ const getFocusableElements = (node) =>
     : [];
 
 function PaymentDetailRow({ label, value, onCopy, isCopied }) {
+  const { lang } = useLanguage();
+  const COPY = getPricingCopy(lang);
+
   return (
     <div className="pricing-payment-card__row">
       <div className="pricing-payment-card__meta">
@@ -171,7 +346,7 @@ function PaymentDetailRow({ label, value, onCopy, isCopied }) {
         <strong>{value}</strong>
       </div>
       <button type="button" className="pricing-copy-btn" onClick={onCopy}>
-        <ClipboardText aria-hidden="true" />
+        <Icon n="clipboard-check" />
         {isCopied ? COPY.modal.copied : COPY.modal.copy}
       </button>
     </div>
@@ -179,19 +354,19 @@ function PaymentDetailRow({ label, value, onCopy, isCopied }) {
 }
 
 function QrPreview() {
+  const { lang } = useLanguage();
+  const COPY = getPricingCopy(lang);
+
   return (
-    <div className="pricing-qr" aria-hidden="true">
+    <div className="pricing-qr" aria-label={COPY.modal.qrCaption}>
       <div className="pricing-qr__frame">
-        {Array.from({ length: 49 }).map((_, index) => (
-          <span
-            key={index}
-            className={`pricing-qr__cell ${
-              [0, 1, 2, 5, 7, 8, 10, 12, 14, 18, 19, 22, 24, 27, 28, 30, 33, 36, 38, 40, 41, 44, 46, 47, 48].includes(index)
-                ? "is-filled"
-                : ""
-            }`}
-          />
-        ))}
+        <QRCodeSVG
+          value={PAYMENT_CONFIG.crypto.walletAddress}
+          size={110}
+          bgColor="transparent"
+          fgColor="var(--navy, #0f1b2d)"
+          level="M"
+        />
       </div>
       <strong>{COPY.modal.qrCaption}</strong>
       <span>{COPY.modal.qrMeta}</span>
@@ -201,24 +376,33 @@ function QrPreview() {
 
 export default function PricingSection({ user, sectionId = "pricing" }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { lang } = useLanguage();
+  const COPY = getPricingCopy(lang);
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
-  const paidPlans = useMemo(() => COPY.plans.filter((plan) => plan.id !== "basic"), []);
+  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const requestedPlanId = queryParams.get("planId") === "business-pro" ? "business-pro" : "premium";
+  const requestedListingId = queryParams.get("listingId") || "";
+  const shouldAutoOpenRequestedPlan = queryParams.has("planId") || queryParams.has("listingId");
+  const paidPlans = useMemo(() => COPY.plans.filter((plan) => plan.id !== "basic"), [COPY]);
   const paymentConfigReady = isPaymentConfigComplete();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => Boolean(user?.id && shouldAutoOpenRequestedPlan));
   const [copiedField, setCopiedField] = useState("");
   const [submitState, setSubmitState] = useState({ status: "idle", message: "", reference: "" });
   const [errors, setErrors] = useState({});
   const [loadingListings, setLoadingListings] = useState(false);
   const [myListings, setMyListings] = useState([]);
-  const [paymentReference, setPaymentReference] = useState(() => buildPaymentReference("premium"));
+  const [bankContact, setBankContact] = useState({ name: user?.name || "", email: user?.email || "", message: "" });
+  const [bankContactStatus, setBankContactStatus] = useState("idle");
+  const [paymentReference, setPaymentReference] = useState(() => buildPaymentReference(requestedPlanId));
   const [formData, setFormData] = useState({
     customerName: user?.name || "",
     email: user?.email || "",
     phone: user?.phone || "",
-    planId: "premium",
+    planId: requestedPlanId,
     paymentMethod: "bank",
-    listingId: "",
+    listingId: requestedPlanId === "premium" ? requestedListingId : "",
     businessName: "",
     transactionId: "",
     notes: "",
@@ -323,17 +507,20 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
     if (submitState.status !== "idle") setSubmitState({ status: "idle", message: "", reference: "" });
   };
 
-  const handleOpenPaidPlan = (planId) => {
+  const handleOpenPaidPlan = (planId, options = {}) => {
     if (!user?.id) {
       navigate("/register");
       return;
     }
+
+    const requestedListing = options.listingId || "";
+
     setPaymentReference(buildPaymentReference(planId));
     setFormData((current) => ({
       ...current,
       planId,
       paymentMethod: "bank",
-      listingId: planId === "premium" ? current.listingId : "",
+      listingId: planId === "premium" ? requestedListing || current.listingId : "",
       businessName: planId === "business-pro" ? current.businessName || user?.name || "" : "",
       transactionId: "",
       notes: "",
@@ -341,7 +528,35 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
     }));
     setErrors({});
     setSubmitState({ status: "idle", message: "", reference: "" });
+    setBankContact({ name: user?.name || "", email: user?.email || "", message: "" });
+    setBankContactStatus("idle");
     setIsOpen(true);
+  };
+
+  const handleBankContact = async (e) => {
+    e.preventDefault();
+    if (!bankContact.name.trim() || !isValidEmail(bankContact.email) || !bankContact.message.trim()) return;
+    setBankContactStatus("sending");
+    try {
+      await addDoc(collection(db, "contactRequests"), {
+        name: bankContact.name.trim(),
+        email: bankContact.email.trim(),
+        message: bankContact.message.trim(),
+        planId: formData.planId,
+        planName: selectedPlan.name,
+        planPrice: `${selectedPlan.price}${selectedPlan.currency} ${selectedPlan.cycle}`,
+        paymentReference,
+        userId: user?.id || null,
+        type: "bank-transfer",
+        notifyEmail: SITE_SETTINGS.contact.email,
+        createdAt: serverTimestamp(),
+        status: "unread",
+      });
+      setBankContactStatus("success");
+    } catch (error) {
+      console.error("Contact request failed:", error);
+      setBankContactStatus("error");
+    }
   };
 
   const handleCopy = async (fieldKey, value) => {
@@ -371,13 +586,6 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
     if (!isValidPhone(formData.phone)) nextErrors.phone = COPY.modal.validation.phone;
     if (formData.planId === "premium" && !formData.listingId) nextErrors.listingId = COPY.modal.validation.listingId;
     if (formData.planId === "business-pro" && !formData.businessName.trim()) nextErrors.businessName = COPY.modal.validation.businessName;
-    if (!(formData.proofFile instanceof File)) {
-      nextErrors.proofFile = COPY.modal.validation.proof;
-    } else if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(formData.proofFile.type)) {
-      nextErrors.proofFile = COPY.modal.validation.proofType;
-    } else if (formData.proofFile.size > PAYMENT_PROOF_MAX_BYTES) {
-      nextErrors.proofFile = COPY.modal.validation.proofSize;
-    }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -405,18 +613,27 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
       setSubmitState({ status: "success", message: "", reference: result.paymentReference });
     } catch (error) {
       console.error("Payment proof submission failed:", error);
+      const code = error?.code || "";
+      const msg = error?.message || "";
+      let userMessage = COPY.modal.submitError;
+      if (msg === "auth-required" || code === "functions/unauthenticated") {
+        userMessage = COPY.modal.authRequired;
+      } else if (msg === "invalid-proof-type") {
+        userMessage = COPY.modal.validation.proofType;
+      } else if (msg === "proof-file-too-large") {
+        userMessage = COPY.modal.validation.proofSize;
+      } else if (msg === "missing-proof-file") {
+        userMessage = COPY.modal.validation.proof;
+      } else if (code === "functions/not-found") {
+        userMessage = COPY.modal.serviceNotFound;
+      } else if (code === "functions/invalid-argument") {
+        userMessage = msg || COPY.modal.invalidArgument;
+      } else if (code === "functions/already-exists") {
+        userMessage = COPY.modal.alreadyExists;
+      }
       setSubmitState({
         status: "error",
-        message:
-          error?.message === "auth-required"
-            ? "Duhet te jeni te kycur per te derguar kerkesen."
-            : error?.message === "invalid-proof-type"
-            ? COPY.modal.validation.proofType
-            : error?.message === "proof-file-too-large"
-            ? COPY.modal.validation.proofSize
-            : error?.message === "missing-proof-file"
-            ? COPY.modal.validation.proof
-            : COPY.modal.submitError,
+        message: userMessage,
         reference: "",
       });
     }
@@ -450,11 +667,10 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
 
             <div className="pricing-section__trust-grid">
               {COPY.trust.map((item) => {
-                const TrustIcon = item.icon;
                 return (
                   <div key={item.title} className="pricing-trust-card">
                     <span className="pricing-trust-card__icon">
-                      <TrustIcon aria-hidden="true" />
+                      <Icon n={item.icon} size={24} />
                     </span>
                     <div>
                       <strong>{item.title}</strong>
@@ -489,7 +705,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
                         <span className="pricing-card__badge">{plan.badge}</span>
                         <h3>{plan.name}</h3>
                         <div className="pricing-card__price">
-                          <strong>{plan.price}</strong>
+                          <strong>{plan.price}<span className="pricing-card__currency">{plan.currency}</span></strong>
                           <span>{plan.cycle}</span>
                         </div>
                         <p>{plan.description}</p>
@@ -498,7 +714,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
                       <ul className="pricing-card__features">
                         {plan.features.map((feature) => (
                           <li key={feature}>
-                            <Check aria-hidden="true" />
+                            <Icon n="check" />
                             <span>{feature}</span>
                           </li>
                         ))}
@@ -522,7 +738,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
 
               <div className="pricing-section__bottom">
                 <div className="pricing-section__notice">
-                  <ShieldCheck aria-hidden="true" />
+                  <Icon n="shield-check" />
                   <div className="pricing-section__notice-copy">
                     <strong>{COPY.noticeTitle}</strong>
                     <p>{COPY.activationNote}</p>
@@ -577,7 +793,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
                 aria-label={COPY.modal.close}
                 onClick={() => setIsOpen(false)}
               >
-                <X aria-hidden="true" />
+                <span className="ui-close-mark" aria-hidden="true">X</span>
               </button>
             </div>
 
@@ -588,7 +804,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
               </div>
               <div>
                 <span>{COPY.modal.priceLabel}</span>
-                <strong>{selectedPlan.price} <em>{selectedPlan.cycle}</em></strong>
+                <strong>{selectedPlan.price}{selectedPlan.currency} <em>{selectedPlan.cycle}</em></strong>
               </div>
               <div>
                 <span>{COPY.modal.reference}</span>
@@ -598,20 +814,20 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
 
             {!paymentConfigReady && (
               <div className="pricing-modal__alert pricing-modal__alert--warning" role="status">
-                <WarningCircle aria-hidden="true" />
+                <Icon n="alert-circle" />
                 <span>{COPY.modal.configureWarning}</span>
               </div>
             )}
 
             <div className="pricing-modal__body">
-              <section className="pricing-modal__payments" aria-label="Payment methods">
+              <section className="pricing-modal__payments" aria-label={COPY.modal.paymentMethodsLabel}>
                 <div className="pricing-methods">
                   <button
                     type="button"
                     className={`pricing-methods__button ${formData.paymentMethod === "bank" ? "is-active" : ""}`}
                     onClick={() => updateField("paymentMethod", "bank")}
                   >
-                    <Bank aria-hidden="true" />
+                    <Icon n="bank" />
                     {COPY.modal.bankMethod}
                   </button>
                   <button
@@ -619,50 +835,58 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
                     className={`pricing-methods__button ${formData.paymentMethod === "crypto" ? "is-active" : ""}`}
                     onClick={() => updateField("paymentMethod", "crypto")}
                   >
-                    <CurrencyBtc aria-hidden="true" />
+                    <Icon n="bitcoin" />
                     {COPY.modal.cryptoMethod}
                   </button>
                 </div>
 
                 <div className="pricing-payment-card">
                   {formData.paymentMethod === "bank" ? (
-                    <>
-                      <div className="pricing-payment-card__header">
-                        <div>
-                          <h4>{COPY.modal.bankCardTitle}</h4>
-                          <p>{COPY.modal.verificationNotice}</p>
-                        </div>
-                        <button type="button" className="pricing-copy-btn pricing-copy-btn--soft" onClick={() => handleCopy("bank-details", bankLines)}>
-                          <ClipboardText aria-hidden="true" />
-                          {copiedField === "bank-details" ? COPY.modal.copied : COPY.modal.copyAll}
-                        </button>
+                    <div className="pricing-bank-contact">
+                      <div className="pricing-bank-contact__icon">
+                        <Icon n="message" />
                       </div>
+                      <h4>{COPY.modal.bankContactTitle}</h4>
+                      <p>{COPY.modal.bankContactDescription}</p>
 
-                      <PaymentDetailRow
-                        label={COPY.modal.beneficiary}
-                        value={PAYMENT_CONFIG.bank.beneficiaryName}
-                        onCopy={() => handleCopy("bank-beneficiary", PAYMENT_CONFIG.bank.beneficiaryName)}
-                        isCopied={copiedField === "bank-beneficiary"}
-                      />
-                      <PaymentDetailRow
-                        label={COPY.modal.iban}
-                        value={PAYMENT_CONFIG.bank.iban}
-                        onCopy={() => handleCopy("bank-iban", PAYMENT_CONFIG.bank.iban)}
-                        isCopied={copiedField === "bank-iban"}
-                      />
-                      <PaymentDetailRow
-                        label={COPY.modal.bankName}
-                        value={PAYMENT_CONFIG.bank.bankName}
-                        onCopy={() => handleCopy("bank-name", PAYMENT_CONFIG.bank.bankName)}
-                        isCopied={copiedField === "bank-name"}
-                      />
-                      <PaymentDetailRow
-                        label={COPY.modal.reference}
-                        value={paymentReference}
-                        onCopy={() => handleCopy("bank-reference", paymentReference)}
-                        isCopied={copiedField === "bank-reference"}
-                      />
-                    </>
+                      {bankContactStatus === "success" ? (
+                        <div className="pricing-bank-contact__success">
+                          <Icon n="check-circle" />
+                          <span>{COPY.modal.bankContactSuccess}</span>
+                        </div>
+                      ) : (
+                        <form className="pricing-bank-contact__form" onSubmit={handleBankContact}>
+                          <input
+                            type="text"
+                            placeholder={COPY.modal.bankContactNamePlaceholder}
+                            value={bankContact.name}
+                            onChange={(e) => setBankContact((c) => ({ ...c, name: e.target.value }))}
+                            required
+                          />
+                          <input
+                            type="email"
+                            placeholder={COPY.modal.bankContactEmailPlaceholder}
+                            value={bankContact.email}
+                            onChange={(e) => setBankContact((c) => ({ ...c, email: e.target.value }))}
+                            required
+                          />
+                          <textarea
+                            placeholder={COPY.modal.bankContactMessagePlaceholder}
+                            value={bankContact.message}
+                            onChange={(e) => setBankContact((c) => ({ ...c, message: e.target.value }))}
+                            rows={3}
+                            required
+                          />
+                          {bankContactStatus === "error" && (
+                            <small className="pricing-bank-contact__error">{COPY.modal.bankContactError}</small>
+                          )}
+                          <button type="submit" className="pricing-bank-contact__btn" disabled={bankContactStatus === "sending"}>
+                            <Icon n="paper-plane" />
+                            <span>{bankContactStatus === "sending" ? COPY.modal.bankContactSending : COPY.modal.bankContactSend}</span>
+                          </button>
+                        </form>
+                      )}
+                    </div>
                   ) : (
                     <>
                       <div className="pricing-payment-card__header">
@@ -671,7 +895,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
                           <p>{COPY.modal.verificationNotice}</p>
                         </div>
                         <button type="button" className="pricing-copy-btn pricing-copy-btn--soft" onClick={() => handleCopy("crypto-details", cryptoLines)}>
-                          <ClipboardText aria-hidden="true" />
+                          <Icon n="clipboard-check" />
                           {copiedField === "crypto-details" ? COPY.modal.copied : COPY.modal.copyAll}
                         </button>
                       </div>
@@ -713,7 +937,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
 
                 {submitState.status === "success" ? (
                   <div className="pricing-modal__success" role="status" aria-live="polite">
-                    <CheckCircle aria-hidden="true" />
+                    <Icon n="check-circle" />
                     <div>
                       <h5>{COPY.modal.successTitle}</h5>
                       <p>{COPY.modal.successMessage}</p>
@@ -779,7 +1003,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
                             disabled={loadingListings || selectableListings.length === 0}
                             aria-invalid={Boolean(errors.listingId)}
                           >
-                            <option value="">{loadingListings ? "Duke ngarkuar..." : COPY.modal.listingPlaceholder}</option>
+                            <option value="">{loadingListings ? COPY.modal.loadingListings : COPY.modal.listingPlaceholder}</option>
                             {selectableListings.map((listing) => (
                               <option key={listing.id} value={listing.id}>
                                 {`#${listing.idNumber || listing.id.slice(0, 6)} - ${listing.title}`}
@@ -792,7 +1016,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
 
                         {!loadingListings && selectableListings.length === 0 && (
                           <div className="pricing-modal__alert pricing-modal__alert--warning" role="status">
-                            <WarningCircle aria-hidden="true" />
+                            <Icon n="alert-circle" />
                             <span>{COPY.modal.noListings}</span>
                           </div>
                         )}
@@ -822,34 +1046,6 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
                       />
                     </label>
 
-                    <div className="pricing-form__field pricing-form__field--upload">
-                      <span>{COPY.modal.proof}</span>
-                      <label className={`pricing-upload ${errors.proofFile ? "has-error" : ""}`}>
-                        <input
-                          type="file"
-                          accept={PAYMENT_PROOF_INPUT_ACCEPT}
-                          onChange={(event) => updateField("proofFile", event.target.files?.[0] || null)}
-                        />
-                        <div className="pricing-upload__content">
-                          <CloudArrowUp aria-hidden="true" />
-                          <strong>{formData.proofFile ? COPY.modal.replaceFile : COPY.modal.selectFile}</strong>
-                          <span>{COPY.modal.proofHint}</span>
-                        </div>
-                      </label>
-                      {formData.proofFile && (
-                        <div className="pricing-upload__file">
-                          <div>
-                            <strong>{formData.proofFile.name}</strong>
-                            <span>{formatBytes(formData.proofFile.size)}</span>
-                          </div>
-                          <button type="button" className="pricing-copy-btn pricing-copy-btn--soft" onClick={() => updateField("proofFile", null)}>
-                            {COPY.modal.removeFile}
-                          </button>
-                        </div>
-                      )}
-                      {errors.proofFile && <small className="pricing-form__error">{errors.proofFile}</small>}
-                    </div>
-
                     <label className="form-group pricing-form__field">
                       <span>{COPY.modal.notes}</span>
                       <textarea
@@ -862,7 +1058,7 @@ export default function PricingSection({ user, sectionId = "pricing" }) {
 
                     {submitState.status === "error" && (
                       <div className="pricing-modal__alert pricing-modal__alert--error" role="alert">
-                        <WarningCircle aria-hidden="true" />
+                        <Icon n="alert-circle" />
                         <span>{submitState.message}</span>
                       </div>
                     )}

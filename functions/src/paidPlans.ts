@@ -607,8 +607,8 @@ export const createPaidPlanRequest = functions.https.onCall(
       );
     }
 
-    const proofStoragePath = sanitizeString(rawData?.proofStoragePath, "", 500);
-    if (!proofStoragePath || !proofStoragePath.startsWith(`payment-proofs/${callerUid}/${submissionId}/`)) {
+    const proofStoragePath = sanitizeOptionalString(rawData?.proofStoragePath, 500);
+    if (proofStoragePath && !proofStoragePath.startsWith(`payment-proofs/${callerUid}/${submissionId}/`)) {
       throw new functions.https.HttpsError(
         "invalid-argument",
         "Path i deshmise se pageses nuk eshte i vlefshem."
@@ -622,13 +622,13 @@ export const createPaidPlanRequest = functions.https.onCall(
     const transactionId = sanitizeOptionalString(rawData?.transactionId, 120);
     const notes = sanitizeOptionalString(rawData?.notes, 1200);
     const businessName = sanitizeOptionalString(rawData?.businessName, 180);
-    const proofFileName = sanitizeString(rawData?.proofFileName, "", 180);
-    const proofOriginalName = sanitizeString(rawData?.proofOriginalName, "", 240);
-    const proofContentType = sanitizeString(rawData?.proofContentType, "", 120);
-    const proofSize = parsePositiveInt(rawData?.proofSize);
+    const proofFileName = sanitizeOptionalString(rawData?.proofFileName, 180);
+    const proofOriginalName = sanitizeOptionalString(rawData?.proofOriginalName, 240);
+    const proofContentType = sanitizeOptionalString(rawData?.proofContentType, 120);
+    const proofSize = parsePositiveInt(rawData?.proofSize) || 0;
     const listingId = sanitizeOptionalString(rawData?.listingId, 128);
 
-    if (!customerName || !email || !phone || !paymentReference || !proofFileName || !proofOriginalName || !proofContentType || !proofSize) {
+    if (!customerName || !email || !phone || !paymentReference) {
       throw new functions.https.HttpsError(
         "invalid-argument",
         "Mungojne te dhenat kryesore te kerkeses."
@@ -695,7 +695,7 @@ export const createPaidPlanRequest = functions.https.onCall(
       listingIdNumber: listingSummary.listingIdNumber,
       businessName: planMeta.targetKind === "business" ? businessName || customerName : "",
       priceAmount: planMeta.amount,
-      currency: "EUR",
+      currency: "€",
       durationDays: planMeta.durationDays,
       durationLabel: planMeta.durationLabel,
       paymentStatus: "pending",

@@ -65,6 +65,8 @@ const sumMetrics = (items = []) =>
     emptyMetrics()
   );
 
+export const sumAnalyticsMetrics = (items = []) => sumMetrics(items);
+
 const calculateConversionRate = (views, leads) => {
   if (!views || views <= 0 || !leads) return 0;
   return Number(((leads / views) * 100).toFixed(2));
@@ -291,12 +293,37 @@ export const listOwnerListingStats = async (userId) => {
   return snapshot.docs.map(normalizeAnalyticsDoc);
 };
 
+export const listAdminListingStats = async () => {
+  const snapshot = await getDocs(
+    query(
+      collection(db, "listing_stats"),
+      orderBy("lastUpdatedAtMs", "desc")
+    )
+  );
+
+  return snapshot.docs.map(normalizeAnalyticsDoc);
+};
+
 export const listOwnerDailyStats = async (userId, startDateKey) => {
   if (!userId) return [];
   const filters = [
     where("ownerUserId", "==", userId),
     orderBy("dateKey", "asc"),
   ];
+
+  if (startDateKey) {
+    filters.unshift(where("dateKey", ">=", startDateKey));
+  }
+
+  const snapshot = await getDocs(
+    query(collection(db, "listing_daily_stats"), ...filters)
+  );
+
+  return snapshot.docs.map(normalizeAnalyticsDoc);
+};
+
+export const listAdminDailyStats = async (startDateKey) => {
+  const filters = [orderBy("dateKey", "asc")];
 
   if (startDateKey) {
     filters.unshift(where("dateKey", ">=", startDateKey));

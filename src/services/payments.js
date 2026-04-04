@@ -37,31 +37,30 @@ export async function submitPaymentProof(payload) {
 
   const submissionId = createSubmissionId();
   const proofFile = payload?.proofFile;
+  let storagePath = "";
+  let safeName = "";
+  let originalName = "";
 
-  if (!(proofFile instanceof File)) {
-    throw new Error("missing-proof-file");
+  if (proofFile instanceof File) {
+    if (!PAYMENT_PROOF_ACCEPTED_TYPES.includes(proofFile.type)) {
+      throw new Error("invalid-proof-type");
+    }
+    if (proofFile.size > PAYMENT_PROOF_MAX_BYTES) {
+      throw new Error("proof-file-too-large");
+    }
+    originalName = normalizeText(proofFile.name) || "payment-proof";
+    safeName = sanitizeFileName(originalName) || "payment-proof";
+    storagePath = `payment-proofs/${auth.currentUser.uid}/${submissionId}/${Date.now()}-${safeName}`;
+
+    await uploadBytes(ref(storage, storagePath), proofFile, {
+      contentType: proofFile.type,
+      customMetadata: {
+        source: "pricing_section",
+        requestOwnerUid: auth.currentUser.uid,
+        submissionId,
+      },
+    });
   }
-
-  if (!PAYMENT_PROOF_ACCEPTED_TYPES.includes(proofFile.type)) {
-    throw new Error("invalid-proof-type");
-  }
-
-  if (proofFile.size > PAYMENT_PROOF_MAX_BYTES) {
-    throw new Error("proof-file-too-large");
-  }
-
-  const originalName = normalizeText(proofFile.name) || "payment-proof";
-  const safeName = sanitizeFileName(originalName) || "payment-proof";
-  const storagePath = `payment-proofs/${auth.currentUser.uid}/${submissionId}/${Date.now()}-${safeName}`;
-
-  await uploadBytes(ref(storage, storagePath), proofFile, {
-    contentType: proofFile.type,
-    customMetadata: {
-      source: "pricing_section",
-      requestOwnerUid: auth.currentUser.uid,
-      submissionId,
-    },
-  });
 
   const paymentReference =
     normalizeText(payload.paymentReference) || buildPaymentReference(payload.planId);
@@ -83,8 +82,8 @@ export async function submitPaymentProof(payload) {
       proofStoragePath: storagePath,
       proofFileName: safeName,
       proofOriginalName: originalName,
-      proofContentType: proofFile.type,
-      proofSize: proofFile.size,
+      proofContentType: proofFile?.type || "",
+      proofSize: proofFile?.size || 0,
     });
 
     return {

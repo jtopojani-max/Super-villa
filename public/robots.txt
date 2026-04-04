@@ -4,4 +4,4 @@ Disallow: /admin
 Disallow: /login
 Disallow: /register
 
-Sitemap: https://supervilla.com/sitemap.xml
+Sitemap: https://villa-apartamente.com/sitemap.xml

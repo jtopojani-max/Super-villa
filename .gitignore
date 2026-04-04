@@ -42,3 +42,15 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Local tool state
+.xdg-config/
+.claude/settings.local.json
+.claude/
+CLAUDE.md
+
+# Local dev output
+vite-dev.err
+vite-dev.out
+vite-local-*.err
+vite-local-*.out

@@ -1,156 +1,124 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { deleteDoc, doc } from "firebase/firestore";
 import { auth, db } from "../firebase.js";
 import { getExperienceConfig } from "../config/experiences.js";
+import { SITE_SETTINGS } from "../config/siteSettings.js";
 import {
   getExperienceDetailPath,
   getExperienceHomePath,
   getListingExperience,
+  getPricingPlansPath,
   normalizeExperience,
 } from "../utils/experience.js";
 import { listPremiumPublicPosts, onPendingCount } from "../services/posts.js";
 import { onUnreadCount } from "../services/chat.js";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import LanguageSwitcher from "./LanguageSwitcher.jsx";
-import {
-  ArrowLeft,
-  ArrowsClockwise,
-  ArrowsDownUp,
-  ArrowUp,
-  Bathtub,
-  Bed,
-  BookmarkSimple,
-  BuildingOffice,
-  Buildings,
-  Calendar,
-  CalendarCheck,
-  Car,
-  CaretDown,
-  CaretLeft,
-  CaretRight,
-  ChartLineUp,
-  ChatDots,
-  Check,
-  ClipboardText,
-  CloudArrowUp,
-  Door,
-  DotsThreeVertical,
-  Elevator,
-  Envelope,
-  Eye,
-  FacebookLogo,
-  Fire,
-  FloppyDisk,
-  Heart,
-  House,
-  HouseSimple,
-  Image,
-  Info,
-  InstagramLogo,
-  Lightning,
-  List,
-  MagnifyingGlass,
-  MapPin,
-  Mountains,
-  PaperPlaneRight,
-  Pen,
-  PencilSimple,
-  Phone,
-  Plus,
-  Prohibit,
-  Ruler,
-  ShieldCheck,
-  SignOut,
-  Snowflake,
-  Sparkle,
-  SwimmingPool,
-  Tag,
-  TiktokLogo,
-  Trash,
-  TreePalm,
-  User,
-  UserMinus,
-  Users,
-  Waves,
-  WhatsappLogo,
-  WifiHigh,
-  X,
-} from "@phosphor-icons/react";
+import PremiumActionButton from "./PremiumActionButton.jsx";
+import { Icon as IconifyIcon } from "@iconify/react";
 
+// Local SVG icons — files served from public/icons/
 const ICON_MAP = {
-  "arrow-left": ArrowLeft,
-  "arrow-up": ArrowUp,
-  "arrows-rotate": ArrowsClockwise,
-  "arrows-up-down": ArrowsDownUp,
-  "ban": Prohibit,
-  "bath": Bathtub,
-  "bed": Bed,
-  "bolt": Lightning,
-  "bookmark": BookmarkSimple,
-  "building": Buildings,
-  "calendar": Calendar,
-  "calendar-check": CalendarCheck,
-  "chart-line": ChartLineUp,
-  "check": Check,
-  "chevron-down": CaretDown,
-  "chevron-left": CaretLeft,
-  "chevron-right": CaretRight,
-  "circle-info": Info,
-  "city": Buildings,
-  "clipboard-check": ClipboardText,
-  "cloud-arrow-up": CloudArrowUp,
-  "comment-dots": ChatDots,
-  "door-open": Door,
-  "elevator": Elevator,
-  "ellipsis-vertical": DotsThreeVertical,
-  "envelope": Envelope,
-  "eye": Eye,
-  "fire-burner": Fire,
-  "heart": Heart,
-  "heart-circle-check": Heart,
-  "home": House,
-  "hot-tub-person": Bathtub,
-  "house": House,
-  "house-circle-xmark": HouseSimple,
-  "image": Image,
-  "list": List,
-  "location-dot": MapPin,
-  "magnifying-glass": MagnifyingGlass,
-  "magnifying-glass-location": MagnifyingGlass,
-  "mountain-sun": Mountains,
-  "paper-plane": PaperPlaneRight,
-  "pen": Pen,
-  "pen-to-square": PencilSimple,
-  "person-swimming": SwimmingPool,
-  "phone": Phone,
-  "plus": Plus,
-  "right-from-bracket": SignOut,
-  "ruler-combined": Ruler,
-  "save": FloppyDisk,
-  "search": MagnifyingGlass,
-  "shield-halved": ShieldCheck,
-  "snowflake": Snowflake,
-  "sparkles": Sparkle,
-  "square-parking": Car,
-  "tag": Tag,
-  "tower-city": BuildingOffice,
-  "trash": Trash,
-  "tree-city": TreePalm,
-  "user": User,
-  "users": Users,
-  "users-slash": UserMinus,
-  "water": Waves,
-  "water-ladder": SwimmingPool,
-  "wifi": WifiHigh,
-  "xmark": X,
+  "add-circle":                "duo-icons--add-circle.svg",
+  "admin":                     "eos-icons--admin-outlined.svg",
+  "alert-circle":              "circum--circle-info.svg",
+  "arrow-left":                "angle-small-left.svg",
+  "arrows-rotate":             "rotate-left.svg",
+  "arrows-up-down":            "priority-arrows.svg",
+  "ban":                       "ion--ban-outline.svg",
+  "bank":                      "mingcute--bank-card-fill.svg",
+  "bath":                      "bath.svg",
+  "bed":                       "bed.svg",
+  "bitcoin":                   "material-symbols-light--currency-bitcoin.svg",
+  "bolt":                      "bolt_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg",
+  "bookmark":                  "bookmark.svg",
+  "building":                  "mdi--building.svg",
+  "calendar":                  "solar--calendar-linear.svg",
+  "calendar-check":            "tabler--calendar-check.svg",
+  "chart-line":                "mdi-light--chart-line.svg",
+  "check":                     "duo-icons--check-circle.svg",
+  "check-circle":              "glyphs-poly--check-circle.svg",
+  "chevron-left":              "angle-small-left.svg",
+  "chevron-right":             "angle-small-right.svg",
+  "circle-info":               "circum--circle-info.svg",
+  "city":                      "healthicons--city.svg",
+  "clipboard-check":           "si--clipboard-check-line.svg",
+  "clock":                     "mdi-light--clock.svg",
+  "close-circle":              "simple-line-icons--close.svg",
+  "cloud-arrow-up":            "stash--cloud-arrow-up-light.svg",
+  "comment-dots":              "iconamoon--comment-dots-thin.svg",
+  "door-open":                 "bi--door-open.svg",
+  "download":                  "material-symbols-light--download.svg",
+  "elevator":                  "iconoir--elevator.svg",
+  "ellipsis-vertical":         "famicons--ellipsis-vertical-circle.svg",
+  "envelope":                  "stash--envelope-light.svg",
+  "eye-off":                   "mdi-light--eye-off.svg",
+  "heart":                     "stash--heart-light.svg",
+  "heart-circle-check":        "fa7-solid--heart-circle-check.svg",
+  "history":                   "material-symbols-light--history-rounded.svg",
+  "home":                      "material-symbols-light--home-outline-rounded.svg",
+  "hot-tub-person":            "material-symbols-light--hot-tub.svg",
+  "house":                     "ph--house-line-light.svg",
+  "house-circle-xmark":        "fa6-solid--house-circle-xmark.svg",
+  "image":                     "ion--image-outline.svg",
+  "list":                      "ep--list.svg",
+  "location-dot":              "fa6-solid--location-dot.svg",
+  "magnifying-glass":          "ph--magnifying-glass-light.svg",
+  "magnifying-glass-location": "fa6-solid--magnifying-glass-location.svg",
+  "meeting-room":              "material-symbols-light--meeting-room-outline.svg",
+  "message":                   "iconamoon--comment-dots-thin.svg",
+  "mountain-sun":              "hugeicons--mountain.svg",
+  "notifications":             "material-symbols-light--notifications-outline.svg",
+  "paper-plane":               "ion--paper-plane.svg",
+  "parking":                   "iconoir--parking.svg",
+  "pen":                       "mdi--edit-outline.svg",
+  "pen-to-square":             "prime--pen-to-square.svg",
+  "person-swimming":           "fa7-solid--person-swimming.svg",
+  "phone":                     "mdi-light--phone.svg",
+  "right-from-bracket":        "famicons--exit-outline.svg",
+  "save":                      "fluent--save-32-light.svg",
+  "search":                    "material-symbols-light--search-rounded.svg",
+  "settings":                  "flat-color-icons--settings.svg",
+  "shield-check":              "mdi--verified-user.svg",
+  "shield-halved":             "mdi--verified-user.svg",
+  "snow":                      "bi--snow.svg",
+  "snowflake":                 "material-symbols-light--snowflake.svg",
+  "sparkles":                  "f7--sparkles.svg",
+  "square-parking":            "fa6-solid--square-parking.svg",
+  "star":                      "fluent-color--star-32.svg",
+  "star-outline":              "material-symbols-light--star-outline.svg",
+  "support-agent":             "material-symbols-light--support-agent-outline-sharp.svg",
+  "tag":                       "mdi-light--tag.svg",
+  "tower-city":                "healthicons--city.svg",
+  "trash":                     "iconamoon--trash-light.svg",
+  "tree-city":                 "fa7-solid--tree-city.svg",
+  "user":                      "mingcute--user-4-fill.svg",
+  "users":                     "ph--users-light.svg",
+  "users-slash":               "fa7-solid--users-slash.svg",
+  "verified-user":             "mdi--verified-user.svg",
+  "water-ladder":              "fa7-solid--water-ladder.svg",
+  "wifi":                      "mynaui--wifi-solid.svg",
+  "xmark":                     "simple-line-icons--close.svg",
 };
 
+// Iconify fallback for icons not covered by local SVGs
+const ICONIFY_FALLBACK = {
+  "arrow-up":       "mdi-light:arrow-up",
+  "chevron-down":   "mdi-light:chevron-down",
+  "eye":            "mdi-light:eye",
+  "fire-burner":    "mdi:fire",
+  "plus":           "mdi-light:plus",
+  "ruler-combined": "mdi:ruler",
+  "water":          "mdi:waves",
+};
+
+// Social/brand icons
 const FAB_MAP = {
-  "facebook-f": FacebookLogo,
-  "instagram": InstagramLogo,
-  "tiktok": TiktokLogo,
-  "whatsapp": WhatsappLogo,
+  "facebook-f": "mdi:facebook",
+  "instagram":  "mdi:instagram",
+  "tiktok":     "simple-icons:tiktok",
+  "whatsapp":   "mdi:whatsapp",
 };
 
 const sortPremiumItems = (a, b) => {
@@ -168,25 +136,67 @@ const formatPremiumPrice = (value, byRequestLabel = "Sipas kerkeses") => {
   return `€${parsed.toLocaleString("sq-AL")}`;
 };
 
-export const Icon = ({ n, style, size, ...rest }) => {
-  const Component = ICON_MAP[n];
-  if (!Component) return null;
-  const isFilled = n === "heart-circle-check";
+export const Icon = ({ n, style, size = 20, className = "", ...rest }) => {
+  if (n === "xmark") {
+    return (
+      <span
+        className={["ui-close-mark", className].filter(Boolean).join(" ")}
+        style={{ minWidth: size, minHeight: size, ...style }}
+        aria-hidden="true"
+        {...rest}
+      >
+        X
+      </span>
+    );
+  }
+
+  const svgFile = ICON_MAP[n];
+  if (svgFile) {
+    return (
+      <span
+        className={["ui-icon", className].filter(Boolean).join(" ")}
+        style={{
+          display: "inline-block",
+          width: size,
+          height: size,
+          flexShrink: 0,
+          verticalAlign: "middle",
+          backgroundColor: "currentColor",
+          WebkitMaskImage: `url('/icons/${svgFile}')`,
+          maskImage: `url('/icons/${svgFile}')`,
+          WebkitMaskSize: "contain",
+          maskSize: "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+          ...style,
+        }}
+        aria-hidden="true"
+        {...rest}
+      />
+    );
+  }
+
+  const iconifyName = ICONIFY_FALLBACK[n];
+  if (!iconifyName) return null;
   return (
-    <Component
+    <IconifyIcon
+      icon={iconifyName}
+      className={className}
       style={style}
-      size={size}
-      weight={isFilled ? "fill" : undefined}
+      width={size}
+      height={size}
       aria-hidden="true"
       {...rest}
     />
   );
 };
 
-export const FabI = ({ n, size, ...rest }) => {
-  const Component = FAB_MAP[n];
-  if (!Component) return null;
-  return <Component size={size} aria-hidden="true" {...rest} />;
+export const FabI = ({ n, size = 20, ...rest }) => {
+  const iconName = FAB_MAP[n];
+  if (!iconName) return null;
+  return <IconifyIcon icon={iconName} width={size} height={size} aria-hidden="true" {...rest} />;
 };
 
 export function BrandLogo({ light = false, onClick, className = "" }) {
@@ -215,7 +225,7 @@ export function WhatsAppButton({ href, label, size = "sm", onClick }) {
       aria-label={resolvedLabel}
       onClick={onClick}
     >
-      <WhatsappLogo className="btn--whatsapp__icon" aria-hidden="true" />
+      <IconifyIcon icon="mdi:whatsapp" className="btn--whatsapp__icon" aria-hidden="true" width={20} height={20} />
       <span className="btn--whatsapp__label">{resolvedLabel}</span>
     </a>
   );
@@ -223,6 +233,7 @@ export function WhatsAppButton({ href, label, size = "sm", onClick }) {
 
 export function Navbar({ user, onLogout, experience = "villas" }) {
   const { t } = useLanguage();
+  const location = useLocation();
   const routerNavigate = useNavigate();
   const currentExperience = normalizeExperience(experience);
   const [open, setOpen] = useState(false);
@@ -297,6 +308,24 @@ export function Navbar({ user, onLogout, experience = "villas" }) {
     routerNavigate(path);
   };
 
+  const scrollToHeroBackground = () => {
+    const heroBackground = document.getElementById("hero-bg") || document.querySelector(".hero__bg");
+    heroBackground?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const goHome = () => {
+    setMobileOpen(false);
+    const homePath = getExperienceHomePath(currentExperience);
+    const currentPath = `${location.pathname}${location.search}`;
+
+    if (currentPath === homePath) {
+      scrollToHeroBackground();
+      return;
+    }
+
+    routerNavigate(homePath, { state: { scrollTarget: "hero-bg" } });
+  };
+
   const scrollToSection = (id) => {
     setMobileOpen(false);
     routerNavigate(getExperienceHomePath(currentExperience));
@@ -329,19 +358,17 @@ export function Navbar({ user, onLogout, experience = "villas" }) {
         <BrandLogo light onClick={() => go(getExperienceHomePath(currentExperience))} />
 
         <nav className="navbar__nav">
-          <span className="navbar__link" onClick={() => go(getExperienceHomePath(currentExperience))}>{t("nav.home")}</span>
+          <span className="navbar__link" onClick={goHome}>{t("nav.home")}</span>
           <span className={`navbar__link ${currentExperience === "villas" ? "is-active" : ""}`} onClick={() => go("/villas")}>
             {t("exp.villas.navLabel")}
           </span>
           <span className={`navbar__link ${currentExperience === "apartments" ? "is-active" : ""}`} onClick={() => go("/apartments")}>
             {t("exp.apartments.navLabel")}
           </span>
-          <span className="navbar__link" onClick={() => scrollToSection("contact")}>{t("nav.contact")}</span>
-          <span className="navbar__link" onClick={() => scrollToSection("services")}>{t("nav.about")}</span>
+          <span className="navbar__link" onClick={() => go(getPricingPlansPath(currentExperience))}>{t("nav.about")}</span>
         </nav>
 
         <div className="navbar__actions navbar__actions--desktop">
-          <LanguageSwitcher />
           {!user ? (
             <>
               <button className="btn btn--ghost" onClick={() => go("/login")}>{t("nav.login")}</button>
@@ -389,6 +416,7 @@ export function Navbar({ user, onLogout, experience = "villas" }) {
               </div>
             </>
           )}
+          <LanguageSwitcher />
         </div>
 
         <div className="navbar__mobile-controls navbar__mobile-right">
@@ -418,25 +446,25 @@ export function Navbar({ user, onLogout, experience = "villas" }) {
             <Icon n="xmark" />
           </button>
         </div>
-        <button className="navbar__mobile-link" onClick={() => go(getExperienceHomePath(currentExperience))}><Icon n="house" /> {t("nav.home")}</button>
+        <button className="navbar__mobile-link" onClick={goHome}><Icon n="house" /> {t("nav.home")}</button>
         <button className="navbar__mobile-link" onClick={() => go("/villas")}><Icon n="tree-city" /> {t("exp.villas.navLabel")}</button>
         <button className="navbar__mobile-link" onClick={() => go("/apartments")}><Icon n="building" /> {t("exp.apartments.navLabel")}</button>
         <button className="navbar__mobile-link" onClick={() => scrollToSection("contact")}><Icon n="envelope" /> {t("nav.contact")}</button>
-        <button className="navbar__mobile-link" onClick={() => scrollToSection("services")}><Icon n="circle-info" /> {t("nav.about")}</button>
+        <button className="navbar__mobile-link" onClick={() => go(getPricingPlansPath(currentExperience))}><Icon n="circle-info" /> {t("nav.about")}</button>
         <button className="navbar__mobile-link" onClick={() => go(user ? "/profile" : "/login")}><Icon n="user" /> {t("nav.account")}</button>
         {user?.role === "admin" && (
           <button className="navbar__mobile-link" onClick={() => go("/admin")}><Icon n="shield-halved" /> {t("nav.adminPanel")}</button>
         )}
 
-        <LanguageSwitcher className="navbar__mobile-lang" />
-
         {!user ? (
           <div className="navbar__mobile-auth">
+            <LanguageSwitcher className="navbar__mobile-lang" />
             <button className="btn btn--ghost btn--full" onClick={() => go("/login")}>{t("nav.login")}</button>
             <button className="btn btn--primary btn--full" onClick={() => go("/register")}>{t("nav.register")}</button>
           </div>
         ) : (
           <div className="navbar__mobile-auth">
+            <LanguageSwitcher className="navbar__mobile-lang" />
             <button className="btn btn--primary btn--full" onClick={() => go("/create")}>{t("nav.postListing")}</button>
             <button className="btn btn--ghost btn--full" onClick={() => { setMobileOpen(false); onLogout(); }}>{t("nav.logout")}</button>
           </div>
@@ -464,9 +492,19 @@ export function Footer({ experience = "villas" }) {
           <BrandLogo light onClick={() => routerNavigate(getExperienceHomePath(currentExperience))} />
           <p>{t("footer.description")}</p>
           <div className="footer__socials">
-            <a href="#" aria-label="Facebook"><FabI n="facebook-f" /></a>
-            <a href="#" aria-label="Instagram"><FabI n="instagram" /></a>
-            <a href="#" aria-label="TikTok"><FabI n="tiktok" /></a>
+            <a href={SITE_SETTINGS.social.facebook} aria-label="Facebook" target="_blank" rel="noreferrer">
+              <FabI n="facebook-f" />
+            </a>
+            <a href={SITE_SETTINGS.social.instagram} aria-label="Instagram" target="_blank" rel="noreferrer">
+              <FabI n="instagram" />
+            </a>
+            <a href={SITE_SETTINGS.social.tiktok} aria-label="TikTok" target="_blank" rel="noreferrer">
+              <FabI n="tiktok" />
+            </a>
+          </div>
+          <div className="footer__contact">
+            <strong>{t("home.emailLabel")}</strong>
+            <a href={SITE_SETTINGS.contact.emailHref}>{SITE_SETTINGS.contact.email}</a>
           </div>
         </div>
         <div className="footer__col">
@@ -492,7 +530,7 @@ export function Footer({ experience = "villas" }) {
   );
 }
 
-export function PremiumSection({ collectionName = "villas", limitCount = 6 }) {
+export function PremiumSection({ user, collectionName = "villas", limitCount = 6 }) {
   const { t } = useLanguage();
   const routerNavigate = useNavigate();
   const experience = normalizeExperience(collectionName);
@@ -571,6 +609,37 @@ export function PremiumSection({ collectionName = "villas", limitCount = 6 }) {
   const renderedItems = isMobileSlider ? items : duplicatedItems;
   const animationDuration = `${baseAnimationSeconds}s`;
   const emptyMessage = t("premiumSection.emptyMessage");
+  const ownerPremiumItems = user?.id
+    ? items.filter((item) => item.ownerUid === user.id || item.createdByUid === user.id || item.userId === user.id)
+    : [];
+
+  const handlePremiumAction = (item) => {
+    const listingExperience = getListingExperience(item);
+    const pricingPath = getPricingPlansPath(listingExperience);
+    const [pathname, currentSearch = ""] = pricingPath.split("?");
+    const searchParams = new URLSearchParams(currentSearch);
+
+    searchParams.set("planId", "premium");
+    searchParams.set("listingId", item.id);
+
+    routerNavigate({
+      pathname,
+      search: `?${searchParams.toString()}`,
+    });
+  };
+
+  const handleGoPremium = () => {
+    const pricingPath = getPricingPlansPath(experience);
+    const [pathname, currentSearch = ""] = pricingPath.split("?");
+    const searchParams = new URLSearchParams(currentSearch);
+
+    searchParams.set("planId", "premium");
+
+    routerNavigate({
+      pathname,
+      search: `?${searchParams.toString()}`,
+    });
+  };
 
   useEffect(() => {
     if (typeof window === "undefined" || !isMobileSlider || items.length <= 1) return undefined;
@@ -690,73 +759,114 @@ export function PremiumSection({ collectionName = "villas", limitCount = 6 }) {
             ))}
           </div>
         ) : items.length > 0 ? (
-          <div
-            ref={premiumMarqueeRef}
-            className={`premium-marquee ${items.length <= 1 ? "premium-marquee--static" : ""} ${isMobileSlider ? "premium-marquee--slides" : ""}`}
-            aria-label={`${config.navLabel} premium`}
-            aria-busy={loading}
-          >
-            <ul
-              className="premium-marquee__track"
-              style={{ "--premium-duration": animationDuration }}
+          <>
+            <div
+              ref={premiumMarqueeRef}
+              className={`premium-marquee ${items.length <= 1 ? "premium-marquee--static" : ""} ${isMobileSlider ? "premium-marquee--slides" : ""}`}
+              aria-label={`${config.navLabel} premium`}
+              aria-busy={loading}
             >
-              {renderedItems.map((item, index) => {
-                const isDuplicateItem = items.length > 1 && index >= items.length;
-                const premiumImage =
-                  (Array.isArray(item.images) && item.images.find(Boolean)) ||
-                  item.image ||
-                  "";
+              <ul
+                className="premium-marquee__track"
+                style={{ "--premium-duration": animationDuration }}
+              >
+                {renderedItems.map((item, index) => {
+                  const isDuplicateItem = items.length > 1 && index >= items.length;
+                  const premiumImage =
+                    (Array.isArray(item.images) && item.images.find(Boolean)) ||
+                    item.image ||
+                    "";
 
-                return (
-                  <li
-                    key={`${item.id}-${index}`}
-                    className="premium-marquee__item"
-                    aria-hidden={isDuplicateItem}
-                  >
-                    <article className={`premium-card premium-card--${experience}`}>
-                      <div className="premium-card__frame">
-                        {/* Premium section card: image-first glass card with compact info footer. */}
-                        <button
-                          type="button"
-                          className="premium-card__media-button"
-                          tabIndex={isDuplicateItem ? -1 : 0}
-                          aria-label={`${t("common.view")} ${item.title}, ${item.location}, ${formatPremiumPrice(item.price, t("common.byRequest"))}`}
-                          onClick={() => routerNavigate(getExperienceDetailPath(experience, item.id, item.title))}
-                        >
-                          <div className="premium-card__media">
-                            <span className="premium-card__eyebrow">{t("premiumSection.badge")}</span>
-                            {premiumImage ? (
-                              <img className="premium-card__image" src={premiumImage} alt="" loading="lazy" />
-                            ) : (
-                              <span className="premium-card__placeholder">
-                                <Icon n="image" />
-                              </span>
-                            )}
-                            <span className="premium-card__media-shade" />
-                          </div>
-                        </button>
+                  return (
+                    <li
+                      key={`${item.id}-${index}`}
+                      className="premium-marquee__item"
+                      aria-hidden={isDuplicateItem}
+                    >
+                      <article className={`premium-card premium-card--${experience}`}>
+                        <div className="premium-card__frame">
+                          {/* Premium section card: image-first glass card with compact info footer. */}
+                          <button
+                            type="button"
+                            className="premium-card__media-button"
+                            tabIndex={isDuplicateItem ? -1 : 0}
+                            aria-label={`${t("common.view")} ${item.title}, ${item.location}, ${formatPremiumPrice(item.price, t("common.byRequest"))}`}
+                            onClick={() => routerNavigate(getExperienceDetailPath(experience, item.id, item.title))}
+                          >
+                            <div className="premium-card__media">
+                              <span className="premium-card__eyebrow">{t("premiumSection.badge")}</span>
+                              {premiumImage ? (
+                                <img className="premium-card__image" src={premiumImage} alt="" loading="lazy" />
+                              ) : (
+                                <span className="premium-card__placeholder">
+                                  <Icon n="image" />
+                                </span>
+                              )}
+                              <span className="premium-card__media-shade" />
+                            </div>
+                          </button>
 
-                        <div className="premium-card__content">
-                          <div className="premium-card__topline">
-                            <h3 className="premium-card__title">{item.title}</h3>
-                            <p className="premium-card__price">{formatPremiumPrice(item.price, t("common.byRequest"))}</p>
+                          <div className="premium-card__content">
+                            <div className="premium-card__topline">
+                              <h3 className="premium-card__title">{item.title}</h3>
+                              <p className="premium-card__price">{formatPremiumPrice(item.price, t("common.byRequest"))}</p>
+                            </div>
+                            <p className="premium-card__location">
+                              <Icon n="location-dot" />
+                              <span>{item.location || t("common.unspecifiedLocation")}</span>
+                            </p>
                           </div>
-                          <p className="premium-card__location">
-                            <Icon n="location-dot" />
-                            <span>{item.location || t("common.unspecifiedLocation")}</span>
-                          </p>
                         </div>
-                      </div>
-                    </article>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+                      </article>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            {ownerPremiumItems.length > 0 ? (
+              <div className="premium-section__actions">
+                {ownerPremiumItems.map((item) => (
+                  <PremiumActionButton
+                    key={`premium-manage-${item.id}`}
+                    type="button"
+                    className="premium-section__manage-btn"
+                    onClick={() => handlePremiumAction(item)}
+                    title={`${t("profile.managePremium")} - ${item.title}`}
+                    icon={<Icon n="shield-check" />}
+                  >
+                    {ownerPremiumItems.length === 1 ? t("profile.managePremium") : `${t("profile.managePremium")} - ${item.title}`}
+                  </PremiumActionButton>
+                ))}
+              </div>
+            ) : (
+              <div className="premium-section__actions">
+                <PremiumActionButton
+                  type="button"
+                  className="premium-section__manage-btn is-upgrade"
+                  onClick={handleGoPremium}
+                  title={t("profile.goPremium")}
+                >
+                  {t("profile.goPremium")}
+                </PremiumActionButton>
+              </div>
+            )}
+          </>
         ) : (
           <div className="premium-section__empty" role="status" aria-live="polite">
             <Icon n="sparkles" />
             <p>{emptyMessage}</p>
+          </div>
+        )}
+        {!loading && items.length === 0 && (
+          <div className="premium-section__actions">
+            <PremiumActionButton
+              type="button"
+              className="premium-section__manage-btn is-upgrade"
+              onClick={handleGoPremium}
+              title={t("profile.goPremium")}
+            >
+              {t("profile.goPremium")}
+            </PremiumActionButton>
           </div>
         )}
       </div>

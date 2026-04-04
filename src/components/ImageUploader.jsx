@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { storage } from "../firebase.js";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 import {
   buildUserPostImagePath,
   isValidImageUrl,
@@ -8,6 +9,61 @@ import {
   validateImageFile,
 } from "../utils/imageUpload.js";
 import { Icon } from "./Shared.jsx";
+
+const COPY = {
+  sq: {
+    label: "Fotot e prones",
+    modeLabel: "Menyra e fotos",
+    uploadTab: "Ngarko foto",
+    urlTab: "Perdor URL",
+    count: (current, max) => `${current}/${max} foto`,
+    coverHint: "Fotoja e pare perdoret si cover.",
+    uploadInProgress: "Prit sa te perfundoje upload-i aktual.",
+    loginRequired: "Duhet te jeni i kycur per te ngarkuar foto.",
+    maxFiles: (max) => `Mund te shtosh maksimumi ${max} foto.`,
+    invalidFile: "Skedari nuk eshte valid.",
+    uploadError: "Nuk u arrit te ngarkohet nje nga fotot. Provo perseri.",
+    missingUrl: "Vendos nje link te fotos.",
+    invalidUrl: "Vendos nje link valid te fotos (http/https).",
+    browseAria: "Zgjidh foto nga pajisja",
+    dropTitle: (max) => `Zvarrit deri ne ${max} foto ketu`,
+    dropCopy: "ose perdor butonin me poshte per t'i marre direkt nga pajisja.",
+    browseButton: "Zgjidh foto nga pajisja",
+    meta: "Vetem image/*, maksimumi 5 MB secila. Mbi 1 MB kompresohet automatikisht.",
+    uploading: "Duke ngarkuar...",
+    uploadingFile: (name) => `Duke ngarkuar: ${name}`,
+    add: "Shto",
+    urlMeta: (max) => `Mund te shtosh deri ne ${max} linke, nje nga nje.`,
+    cover: "Cover",
+    imageAlt: (index) => `Foto ${index}`,
+  },
+  en: {
+    label: "Property photos",
+    modeLabel: "Photo mode",
+    uploadTab: "Upload photos",
+    urlTab: "Use URL",
+    count: (current, max) => `${current}/${max} photos`,
+    coverHint: "The first photo is used as the cover.",
+    uploadInProgress: "Please wait for the current upload to finish.",
+    loginRequired: "You must be logged in to upload photos.",
+    maxFiles: (max) => `You can add a maximum of ${max} photos.`,
+    invalidFile: "The selected file is not valid.",
+    uploadError: "Could not upload one of the photos. Please try again.",
+    missingUrl: "Enter an image URL.",
+    invalidUrl: "Enter a valid image URL (http/https).",
+    browseAria: "Choose photos from device",
+    dropTitle: (max) => `Drag up to ${max} photos here`,
+    dropCopy: "or use the button below to pick them directly from your device.",
+    browseButton: "Choose photos from device",
+    meta: "Only image/* files, up to 5 MB each. Files over 1 MB are compressed automatically.",
+    uploading: "Uploading...",
+    uploadingFile: (name) => `Uploading: ${name}`,
+    add: "Add",
+    urlMeta: (max) => `You can add up to ${max} links, one at a time.`,
+    cover: "Cover",
+    imageAlt: (index) => `Image ${index}`,
+  },
+};
 
 const normalizeValues = (values) => {
   if (Array.isArray(values)) {
@@ -29,13 +85,15 @@ const buildUploadItem = (file) => ({
 
 export default function ImageUploader({
   className = "",
-  label = "Fotot e prones",
+  label,
   uid,
   values = [],
   onChange,
   onUploadingChange,
   maxFiles = 10,
 }) {
+  const { lang } = useLanguage();
+  const copy = COPY[lang] || COPY.sq;
   const fileInputRef = useRef(null);
   const uploadTaskRef = useRef(null);
   const mountedRef = useRef(true);
@@ -118,12 +176,9 @@ export default function ImageUploader({
   };
 
   const handleUploadError = (uploadError) => {
-    if (uploadError?.code === "storage/canceled") {
-      return;
-    }
-
+    if (uploadError?.code === "storage/canceled") return;
     console.error("Image upload failed:", uploadError);
-    setError("Nuk u arrit te ngarkohet nje nga fotot. Provo perseri.");
+    setError(copy.uploadError);
   };
 
   const uploadSingleFile = async (file, item) => {
@@ -141,14 +196,12 @@ export default function ImageUploader({
         "state_changed",
         (snapshot) => {
           if (!mountedRef.current) return;
-          const nextProgress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          setProgress(nextProgress);
+          setProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
         },
         (uploadError) => reject(uploadError),
         async () => {
           try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
+            resolve(await getDownloadURL(uploadTask.snapshot.ref));
           } catch (downloadError) {
             reject(downloadError);
           }
@@ -167,24 +220,24 @@ export default function ImageUploader({
     if (!files.length) return;
 
     if (uploading) {
-      setError("Prit sa te perfundoje upload-i aktual.");
+      setError(copy.uploadInProgress);
       return;
     }
 
     if (!uid) {
-      setError("Duhet te jeni i kycur per te ngarkuar foto.");
+      setError(copy.loginRequired);
       return;
     }
 
     if (imageValues.length + uploadingItems.length + files.length > maxFiles) {
-      setError(`Mund te shtosh maksimumi ${maxFiles} foto.`);
+      setError(copy.maxFiles(maxFiles));
       return;
     }
 
     try {
       files.forEach((file) => validateImageFile(file));
     } catch (validationError) {
-      setError(validationError instanceof Error ? validationError.message : "Skedari nuk eshte valid.");
+      setError(validationError instanceof Error ? validationError.message : copy.invalidFile);
       return;
     }
 
@@ -220,11 +273,11 @@ export default function ImageUploader({
 
   const handleBrowse = () => {
     if (uploading) {
-      setError("Prit sa te perfundoje upload-i aktual.");
+      setError(copy.uploadInProgress);
       return;
     }
     if (!canAddMore) {
-      setError(`Mund te shtosh maksimumi ${maxFiles} foto.`);
+      setError(copy.maxFiles(maxFiles));
       return;
     }
     fileInputRef.current?.click();
@@ -256,17 +309,17 @@ export default function ImageUploader({
     const normalizedUrl = urlInput.trim();
 
     if (!normalizedUrl) {
-      setError("Vendos nje link te fotos.");
+      setError(copy.missingUrl);
       return;
     }
 
     if (!isValidImageUrl(normalizedUrl)) {
-      setError("Vendos nje link valid te fotos (http/https).");
+      setError(copy.invalidUrl);
       return;
     }
 
     if (imageValues.length >= maxFiles) {
-      setError(`Mund te shtosh maksimumi ${maxFiles} foto.`);
+      setError(copy.maxFiles(maxFiles));
       return;
     }
 
@@ -293,14 +346,14 @@ export default function ImageUploader({
 
   return (
     <div className={`${className} image-uploader-field`.trim()}>
-      <label>{label}</label>
+      <label>{label || copy.label}</label>
 
       <div className="image-uploader__topbar">
-        <span className="image-uploader__count">{imageValues.length}/{maxFiles} foto</span>
-        <span className="image-uploader__cover-hint">Fotoja e pare perdoret si cover.</span>
+        <span className="image-uploader__count">{copy.count(imageValues.length, maxFiles)}</span>
+        <span className="image-uploader__cover-hint">{copy.coverHint}</span>
       </div>
 
-      <div className="image-uploader__toggle" role="tablist" aria-label="Menyra e fotos">
+      <div className="image-uploader__toggle" role="tablist" aria-label={copy.modeLabel}>
         <button
           type="button"
           role="tab"
@@ -308,7 +361,7 @@ export default function ImageUploader({
           className={`image-uploader__toggle-btn ${mode === "upload" ? "is-active" : ""}`}
           onClick={() => handleModeChange("upload")}
         >
-          Upload photos
+          {copy.uploadTab}
         </button>
         <button
           type="button"
@@ -317,7 +370,7 @@ export default function ImageUploader({
           className={`image-uploader__toggle-btn ${mode === "url" ? "is-active" : ""}`}
           onClick={() => handleModeChange("url")}
         >
-          Use URL
+          {copy.urlTab}
         </button>
       </div>
 
@@ -325,9 +378,9 @@ export default function ImageUploader({
         <div className="image-uploader__gallery">
           {galleryItems.map((item, index) => (
             <div key={item.id} className={`image-uploader__thumb ${item.type === "uploading" ? "is-uploading" : ""}`}>
-              <img src={item.url} alt={`Foto ${index + 1}`} className="image-uploader__thumb-image" />
+              <img src={item.url} alt={copy.imageAlt(index + 1)} className="image-uploader__thumb-image" />
               <div className="image-uploader__thumb-overlay">
-                <span className="image-uploader__thumb-index">{index === 0 ? "Cover" : `${index + 1}`}</span>
+                <span className="image-uploader__thumb-index">{index === 0 ? copy.cover : `${index + 1}`}</span>
                 {item.type === "uploaded" ? (
                   <>
                     {item.isRecent && (
@@ -355,7 +408,7 @@ export default function ImageUploader({
           className={`image-uploader__dropzone ${dragActive ? "is-dragging" : ""}`}
           role="button"
           tabIndex={0}
-          aria-label="Zgjidh foto nga pajisja"
+          aria-label={copy.browseAria}
           onClick={handleDropzoneClick}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -394,8 +447,8 @@ export default function ImageUploader({
           <div className="image-uploader__dropzone-icon">
             <Icon n="cloud-arrow-up" />
           </div>
-          <strong className="image-uploader__dropzone-title">Zvarrit deri ne 10 foto ketu</strong>
-          <p className="image-uploader__dropzone-copy">ose perdor butonin me poshte per t&apos;i marre direkt nga pajisja.</p>
+          <strong className="image-uploader__dropzone-title">{copy.dropTitle(maxFiles)}</strong>
+          <p className="image-uploader__dropzone-copy">{copy.dropCopy}</p>
 
           <div className="image-uploader__actions">
             <button
@@ -407,15 +460,15 @@ export default function ImageUploader({
                 handleBrowse();
               }}
             >
-              <Icon n="image" /> Zgjidh foto nga pajisja
+              <Icon n="image" /> {copy.browseButton}
             </button>
-            <span className="image-uploader__meta">Vetem image/*, maksimumi 5 MB secila. Mbi 1 MB kompresohet automatikisht.</span>
+            <span className="image-uploader__meta">{copy.meta}</span>
           </div>
 
           {uploading && (
             <div className="image-uploader__progress">
               <div className="image-uploader__progress-head">
-                <span>{activeUploadName ? `Duke ngarkuar: ${activeUploadName}` : "Duke ngarkuar..."}</span>
+                <span>{activeUploadName ? copy.uploadingFile(activeUploadName) : copy.uploading}</span>
                 <strong>{progress}%</strong>
               </div>
               <div className="image-uploader__progress-track" aria-hidden="true">
@@ -443,10 +496,10 @@ export default function ImageUploader({
               placeholder="https://images.unsplash.com/..."
             />
             <button type="button" className="btn btn--primary" disabled={imageValues.length >= maxFiles} onClick={handleAddUrl}>
-              <Icon n="plus" /> Shto
+              <Icon n="plus" /> {copy.add}
             </button>
           </div>
-          <p className="image-uploader__meta">Mund te shtosh deri ne 10 linke, nje nga nje.</p>
+          <p className="image-uploader__meta">{copy.urlMeta(maxFiles)}</p>
         </div>
       )}
 

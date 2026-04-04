@@ -86,7 +86,7 @@ export default function PropertyCatalogPage({ user, onLogout, onUpdateUser, expe
       <Navbar user={user} onLogout={onLogout} experience={experienceKey} />
 
       {/* Premium section: dedicated curated slider for each catalog page. */}
-      <PremiumSection collectionName={experienceKey} limitCount={6} />
+      <PremiumSection user={user} collectionName={experienceKey} limitCount={6} />
 
       <section className="listings listings--page experience-catalog">
         <div className="container">
@@ -101,7 +101,7 @@ export default function PropertyCatalogPage({ user, onLogout, onUpdateUser, expe
           <div className="listings-grid">
             {loading ? (
               <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                <p>Duke ngarkuar listimet...</p>
+                <p>{t("common.loading")}</p>
               </div>
             ) : error ? (
               <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "60px 20px", color: "var(--error)" }}>
@@ -110,7 +110,7 @@ export default function PropertyCatalogPage({ user, onLogout, onUpdateUser, expe
             ) : experiencePosts.length === 0 ? (
               <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
                 <Icon n="house-circle-xmark" style={{ fontSize: "2.5rem", opacity: 0.25, display: "block", marginBottom: 12 }} />
-                <p>{config.catalog.empty}</p>
+                <p>{t(`${expKey}.catalogEmpty`)}</p>
               </div>
             ) : (
               experiencePosts.map((post) => (

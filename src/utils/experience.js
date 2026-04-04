@@ -32,6 +32,11 @@ export const getExperienceHomePath = (experience = "villas") => {
   return resolved === "apartments" ? "/?mode=apartments" : "/";
 };
 
+export const getPricingPlansPath = (experience = "villas") => {
+  const resolved = normalizeExperience(experience);
+  return resolved === "apartments" ? "/pricing-plans?mode=apartments" : "/pricing-plans";
+};
+
 export const getExperienceCatalogPath = (experience = "villas") =>
   getExperienceConfig(normalizeExperience(experience)).route;
 

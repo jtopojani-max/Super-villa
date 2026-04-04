@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import sq from "./sq.js";
 import en from "./en.js";
 
@@ -31,6 +31,10 @@ const resolve = (obj, path) => {
 
 export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState(getInitialLang);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = useCallback((nextLang) => {
     if (!LANGUAGES[nextLang]) return;

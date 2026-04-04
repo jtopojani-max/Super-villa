@@ -46,6 +46,10 @@ service cloud.firestore {
         && subscriptionPlanId(userId) == "business-pro";
     }
 
+    function isAnalyticsOwner(ownerUserId) {
+      return isSignedIn() && ownerUserId == request.auth.uid;
+    }
+
     function authEmail() {
       return request.auth.token.email != null
         ? request.auth.token.email
@@ -351,7 +355,9 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if isAdmin()
         || (isSignedIn() && resource.data.recipientUserId == request.auth.uid);
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin();
+      allow delete: if isAdmin()
+        || (isSignedIn() && resource.data.recipientUserId == request.auth.uid);
       allow update: if isAdmin()
         || (
           isSignedIn()
@@ -369,51 +375,46 @@ service cloud.firestore {
     }
 
     match /owner_analytics/{userId} {
-      allow read: if hasBasicAnalyticsAccess(userId) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /owner_analytics_details/{userId} {
-      allow read: if hasBusinessAnalyticsAccess(userId) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /listing_stats/{listingId} {
       allow read: if (
-        isSignedIn()
-        && hasBasicAnalyticsAccess(resource.data.ownerUserId)
+        isAnalyticsOwner(resource.data.ownerUserId)
       ) || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /listing_daily_stats/{docId} {
       allow read: if (
-        isSignedIn()
-        && hasBasicAnalyticsAccess(resource.data.ownerUserId)
+        isAnalyticsOwner(resource.data.ownerUserId)
       ) || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /listing_monthly_stats/{docId} {
       allow read: if (
-        isSignedIn()
-        && hasBasicAnalyticsAccess(resource.data.ownerUserId)
+        isAnalyticsOwner(resource.data.ownerUserId)
       ) || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /listing_events/{eventId} {
       allow read: if (
-        isSignedIn()
-        && hasBusinessAnalyticsAccess(resource.data.ownerUserId)
+        isAnalyticsOwner(resource.data.ownerUserId)
       ) || isAdmin();
       allow create, update, delete: if false;
     }
 
     match /leads/{leadId} {
       allow read: if (
-        isSignedIn()
-        && hasBusinessAnalyticsAccess(resource.data.ownerUserId)
+        isAnalyticsOwner(resource.data.ownerUserId)
       ) || isAdmin();
       allow create, update, delete: if false;
     }
