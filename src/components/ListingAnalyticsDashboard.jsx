@@ -7,13 +7,10 @@ import {
   buildListingBreakdownForTimeframe,
   buildOwnerTimeline,
   buildOwnerTotalsForTimeframe,
-  formatBreakdownLabel,
   getDateKeyDaysAgo,
-  getOwnerAnalyticsDetails,
   getOwnerAnalyticsSummary,
   listOwnerDailyStats,
   listOwnerListingStats,
-  listOwnerRecentActivity,
   listOwnerRecentLeads,
 } from "../services/analytics.js";
 import {
@@ -25,14 +22,15 @@ import {
 const COPY = {
   sq: {
     kpi: {
-      views: "Total Views",
-      uniqueViews: "Unique Views",
-      whatsappClicks: "WhatsApp Clicks",
+      views: "Shikime",
+      uniqueViews: "Vizita unike",
       leads: "Leads",
-      conversionRate: "Conversion Rate",
+      leadRate: "Lead rate",
     },
-    noActivity: "Pa aktivitet ende",
-    noDate: "Pa date",
+    highlightListings: "Listing aktive",
+    highlightLeads: "Leads ne periudhe",
+    highlightAvgViews: "Mesatare views / listing",
+    updatedLabel: "Perditesuar se fundi",
     businessValue: "Business",
     businessLocked: "Kjo metrike hapet me Business Pro.",
     lockedTitle: "Business Pro zhbllokon analytics te avancuara",
@@ -44,71 +42,62 @@ const COPY = {
     tableEmptySuffix: "zgjedhur",
     tableListing: "Listing",
     tableViews: "Views",
-    tableWhatsapp: "WhatsApp",
+    tableUnique: "Unike",
     tableLeads: "Leads",
-    tableStatus: "Status",
-    tableConv: "Conv. Rate",
+    tablePriority: "Prioritet",
+    pillWarn: "Ka trafik, por jo leads",
+    pillNeutral: "Po mbledh te dhena",
+    pillGood: "Konvertohet mire",
     noLocation: "Pa lokacion",
-    basic: "Basic",
     loading: "Duke ngarkuar statistikat...",
     error: "Nuk u ngarkuan statistikat. Provo perseri.",
-    heroEyebrow: "ANALYTICS DASHBOARD",
-    heroTitle: "Performanca e listing-eve tuaja",
-    heroSubtitle: "Ndiqni views, interesimin dhe leads ne kohe reale, me akses te diferencuar sipas planit aktiv.",
+    heroEyebrow: "LISTING ANALYTICS",
+    heroTitle: "Statistikat qe ndikojne ne vendim",
+    heroSubtitle: "Shikoni cilat listing-e po marrin reach, ku po kthehet interesi ne kontakt dhe cfare duhet optimizuar me pare.",
     noPlan: "Pa pakete aktive",
     expiresOn: "Skadon me",
     pendingPlan: "Plani juaj eshte ne pritje te verifikimit nga administratori.",
     inactivePlan: "Aktivizoni Premium ose Business Pro per te pare statistikat.",
-    activatePlans: "Aktivizoni Premium ose Business Pro per te pare statistikat.",
     upgradeChip: "Statistikat jane feature me pagese",
     upgradeTitle: "Zhbllokoni dashboard profesional per listing-et tuaja",
     upgradeCopy: "Premium jep statistika bazike per views, WhatsApp clicks dhe leads. Business Pro shton grafik, conversion rate, recent lead activity dhe breakdown sipas burimit e device.",
     viewPlans: "Shiko paketat",
     activateBusiness: "Aktivizo Business Pro",
     toolbarAria: "Filtro statistikat sipas periudhes",
-    toolbarNote: "Aktiviteti regjistrohet nga detail page, WhatsApp dhe telefon.",
-    periodLabel: "Periudha",
-    sectionPerformance: "Performanca per periudhen e zgjedhur",
-    sectionPerformanceAll: "Pamje aggregate per gjithe historikun e listing-eve.",
-    sectionPerformanceRange: "Metrikat llogariten nga agregimet ditore per performance dhe kosto te kontrolluar.",
-    quickView: "Shikim i shpejte",
-    quickViewCopy: "Totalet per te gjitha listing-et aktive te profilit tuaj.",
-    totalListings: "Total listings",
-    totalPhoneClicks: "Total phone clicks",
-    contactSubmits: "Contact submits",
-    leadRate: "Lead rate",
+    toolbarNote: "Fokus te reach, leads dhe kanalit te kontaktit per cdo listing.",
+    focusTitle: "Ku duhet fokusi",
+    focusCopy: "Dy sinjalet me te rendesishme per te vendosur cfare duhet shtyre me shume.",
+    topReachLabel: "Listing me reach me te larte",
+    needsImprovementLabel: "Kerkon permiresim",
+    perfTitle: "Performanca sipas listing-ut",
+    perfCopy: "Krahasim i listing-eve sipas reach dhe interesit real.",
+    contactChannelsTitle: "Kanalet e kontaktit",
+    contactChannelsCopy: "Shikoni ku preferojne t'ju kontaktojne vizitoret.",
+    contactChannelsEmpty: "Sapo te vijne kontaktet e para, ketu do te shihni WhatsApp, telefon dhe formular.",
     trendTitle: "Trend 30 ditor",
-    trendCopy: "Grafik i agreguar i views dhe leads per 30 ditet e fundit.",
-    trustTitle: "Trust & visibility",
-    trustCopy: "Ky seksion ju ndihmon te kuptoni sa shpejt po gjeneroni interes.",
-    leadsToday: "Leads sot",
-    views7d: "Views 7 dite",
-    whatsapp30d: "WhatsApp 30 dite",
-    sourcesTitle: "Burimet kryesore",
-    sourcesEmpty: "Burimet do te shfaqen sapo te vijne vizitat e para.",
-    devicesTitle: "Paisjet",
-    devicesEmpty: "Nuk ka ende device breakdown.",
-    referrersTitle: "Referrer",
-    referrersEmpty: "Nuk ka ende referrer breakdown.",
-    advancedTitle: "Breakdown te avancuara",
-    advancedCopy: "Source, device dhe referrer insights hapen me Business Pro.",
-    recentActivity: "Recent activity",
-    recentLeads: "Recent leads",
-    insightsTitle: "Insights te avancuara",
-    insightsCopy: "Recent activity, lead stream, device/referrer details dhe event breakdown jane pjese e Business Pro.",
+    trendCopy: "Views dhe leads te agreguara per 30 ditet e fundit.",
+    recentLeadsTitle: "Kontaktet e fundit",
+    recentLeadsCopy: "Lead-et me te fundit qe kane ardhur nga listing-et tuaja.",
     noLeadsYet: "Ende nuk ka leads te regjistruara.",
-    noActivityYet: "Ende nuk ka aktivitet te fundit.",
+    whatsappChannel: "WhatsApp",
+    phoneChannel: "Telefon",
+    formChannel: "Formular",
+    viewsHelper: "Periudha",
+    uniqueHelper: "Vizitore reale ne periudhen e zgjedhur.",
+    leadsHelper: "WhatsApp, telefon dhe formular.",
+    leadRateHelper: "Raporti leads ndaj views.",
   },
   en: {
     kpi: {
-      views: "Total Views",
-      uniqueViews: "Unique Views",
-      whatsappClicks: "WhatsApp Clicks",
+      views: "Views",
+      uniqueViews: "Unique visits",
       leads: "Leads",
-      conversionRate: "Conversion Rate",
+      leadRate: "Lead rate",
     },
-    noActivity: "No activity yet",
-    noDate: "No date",
+    highlightListings: "Active listings",
+    highlightLeads: "Leads in period",
+    highlightAvgViews: "Avg views / listing",
+    updatedLabel: "Last updated",
     businessValue: "Business",
     businessLocked: "This metric unlocks with Business Pro.",
     lockedTitle: "Business Pro unlocks advanced analytics",
@@ -120,60 +109,50 @@ const COPY = {
     tableEmptySuffix: "",
     tableListing: "Listing",
     tableViews: "Views",
-    tableWhatsapp: "WhatsApp",
+    tableUnique: "Unique",
     tableLeads: "Leads",
-    tableStatus: "Status",
-    tableConv: "Conv. Rate",
+    tablePriority: "Priority",
+    pillWarn: "Traffic, no leads",
+    pillNeutral: "Collecting data",
+    pillGood: "Converting well",
     noLocation: "No location",
-    basic: "Basic",
     loading: "Loading analytics...",
     error: "Could not load analytics. Please try again.",
-    heroEyebrow: "ANALYTICS DASHBOARD",
-    heroTitle: "Your listing performance",
-    heroSubtitle: "Track views, interest, and leads in real time, with access based on your active plan.",
+    heroEyebrow: "LISTING ANALYTICS",
+    heroTitle: "Analytics that drive decisions",
+    heroSubtitle: "See which listings are getting reach, where interest turns into contact, and what to optimize first.",
     noPlan: "No active plan",
-    expiresOn: "Expires on",
+    expiresOn: "Expires",
     pendingPlan: "Your plan is waiting for administrator verification.",
     inactivePlan: "Activate Premium or Business Pro to view analytics.",
-    activatePlans: "Activate Premium or Business Pro to view analytics.",
     upgradeChip: "Analytics are a paid feature",
     upgradeTitle: "Unlock a professional dashboard for your listings",
     upgradeCopy: "Premium gives you basic analytics for views, WhatsApp clicks, and leads. Business Pro adds charts, conversion rate, recent lead activity, and source/device breakdowns.",
     viewPlans: "View plans",
     activateBusiness: "Activate Business Pro",
     toolbarAria: "Filter analytics by period",
-    toolbarNote: "Activity is recorded from the detail page, WhatsApp, and phone.",
-    periodLabel: "Period",
-    sectionPerformance: "Performance for the selected period",
-    sectionPerformanceAll: "Aggregate view across your full listing history.",
-    sectionPerformanceRange: "Metrics are calculated from daily aggregates for controlled performance and cost.",
-    quickView: "Quick view",
-    quickViewCopy: "Totals across all active listings in your profile.",
-    totalListings: "Total listings",
-    totalPhoneClicks: "Total phone clicks",
-    contactSubmits: "Contact submits",
-    leadRate: "Lead rate",
+    toolbarNote: "Focus on reach, leads, and contact channel for each listing.",
+    focusTitle: "Where to focus",
+    focusCopy: "The two most important signals to decide what to push harder.",
+    topReachLabel: "Listing with most reach",
+    needsImprovementLabel: "Needs improvement",
+    perfTitle: "Performance by listing",
+    perfCopy: "Comparison of listings by reach and real interest.",
+    contactChannelsTitle: "Contact channels",
+    contactChannelsCopy: "See where visitors prefer to contact you.",
+    contactChannelsEmpty: "Once the first contacts arrive, you will see WhatsApp, phone, and form here.",
     trendTitle: "30-day trend",
-    trendCopy: "Aggregate chart of views and leads over the last 30 days.",
-    trustTitle: "Trust & visibility",
-    trustCopy: "This section helps you understand how quickly you are generating interest.",
-    leadsToday: "Leads today",
-    views7d: "Views in 7 days",
-    whatsapp30d: "WhatsApp in 30 days",
-    sourcesTitle: "Top sources",
-    sourcesEmpty: "Sources will appear as soon as the first visits arrive.",
-    devicesTitle: "Devices",
-    devicesEmpty: "No device breakdown yet.",
-    referrersTitle: "Referrers",
-    referrersEmpty: "No referrer breakdown yet.",
-    advancedTitle: "Advanced breakdowns",
-    advancedCopy: "Source, device, and referrer insights unlock with Business Pro.",
-    recentActivity: "Recent activity",
-    recentLeads: "Recent leads",
-    insightsTitle: "Advanced insights",
-    insightsCopy: "Recent activity, lead stream, device/referrer details, and event breakdowns are part of Business Pro.",
+    trendCopy: "Aggregated views and leads for the last 30 days.",
+    recentLeadsTitle: "Recent contacts",
+    recentLeadsCopy: "The latest leads that came from your listings.",
     noLeadsYet: "No leads recorded yet.",
-    noActivityYet: "No recent activity yet.",
+    whatsappChannel: "WhatsApp",
+    phoneChannel: "Phone",
+    formChannel: "Form",
+    viewsHelper: "Period",
+    uniqueHelper: "Real visitors in the selected period.",
+    leadsHelper: "WhatsApp, phone and form.",
+    leadRateHelper: "Leads to views ratio.",
   },
 };
 
@@ -192,33 +171,6 @@ function AnalyticsStatCard({ label, value, icon, tone = "default", helper, locke
   );
 }
 
-function AnalyticsLockedPanel({ compact = false, copy }) {
-  return (
-    <div className={`analytics-locked${compact ? " analytics-locked--compact" : ""}`}>
-      <div className="analytics-locked__icon">
-        <Icon n="shield-halved" />
-      </div>
-      <div className="analytics-locked__copy">
-        <strong>{copy.lockedTitle}</strong>
-        <p>{copy.lockedCopy}</p>
-      </div>
-      <a className="btn btn--primary analytics-locked__cta" href="/#services">
-        {copy.lockedCta}
-      </a>
-    </div>
-  );
-}
-
-function AnalyticsEmptyState({ copy }) {
-  return (
-    <div className="analytics-empty">
-      <Icon n="chart-line" />
-      <h3>{copy.emptyTitle}</h3>
-      <p>{copy.emptyCopy}</p>
-    </div>
-  );
-}
-
 function TimelineChart({ items }) {
   const maxValue = useMemo(() => Math.max(...items.map((item) => Math.max(item.views, item.leads)), 1), [items]);
 
@@ -228,18 +180,18 @@ function TimelineChart({ items }) {
         <span><i className="analytics-chart__dot analytics-chart__dot--views" /> Views</span>
         <span><i className="analytics-chart__dot analytics-chart__dot--leads" /> Leads</span>
       </div>
-      <div className="analytics-chart__plot" role="img" aria-label="Views and leads chart for the last 30 days">
+      <div className="analytics-chart__plot" role="img" aria-label="Grafiku i views dhe leads per 30 ditet e fundit">
         {items.map((item) => (
           <div className="analytics-chart__slot" key={item.dateKey}>
             <span
               className="analytics-chart__bar analytics-chart__bar--views"
               style={{ height: `${Math.max((item.views / maxValue) * 100, item.views ? 8 : 0)}%` }}
-              title={`${item.label}: ${item.views} views`}
+              title={`${item.label}: ${item.views} Views`}
             />
             <span
               className="analytics-chart__bar analytics-chart__bar--leads"
               style={{ height: `${Math.max((item.leads / maxValue) * 100, item.leads ? 8 : 0)}%` }}
-              title={`${item.label}: ${item.leads} leads`}
+              title={`${item.label}: ${item.leads} Leads`}
             />
             <span className="analytics-chart__label">{item.label}</span>
           </div>
@@ -249,58 +201,16 @@ function TimelineChart({ items }) {
   );
 }
 
-function BreakdownList({ title, items, emptyText }) {
-  return (
-    <section className="analytics-breakdown-card">
-      <div className="analytics-block__head">
-        <h4>{title}</h4>
-      </div>
-      {items.length === 0 ? (
-        <p className="analytics-breakdown-card__empty">{emptyText}</p>
-      ) : (
-        <ul className="analytics-breakdown-list">
-          {items.slice(0, 6).map((item) => (
-            <li key={item.key} className="analytics-breakdown-list__item">
-              <span>{formatBreakdownLabel(item.key)}</span>
-              <strong>{Number(item.count || 0)}</strong>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+function getPriorityPill(row, copy) {
+  const views = Number(row.metrics?.views || 0);
+  const leads = Number(row.metrics?.leads || 0);
+  const leadRate = `${Number(row.conversionRate || 0).toFixed(1)}%`;
+  if (leads > 0) return { className: "analytics-status-pill--good", label: copy.pillGood, leadRate };
+  if (views >= 5) return { className: "analytics-status-pill--warn", label: copy.pillWarn, leadRate };
+  return { className: "analytics-status-pill--neutral", label: copy.pillNeutral, leadRate };
 }
 
-function ActivityList({ title, items, leadOnly = false, copy, lang }) {
-  return (
-    <section className="analytics-activity-card">
-      <div className="analytics-block__head">
-        <h4>{title}</h4>
-      </div>
-      {items.length === 0 ? (
-        <p className="analytics-breakdown-card__empty">{leadOnly ? copy.noLeadsYet : copy.noActivityYet}</p>
-      ) : (
-        <div className="analytics-activity-list">
-          {items.map((item) => (
-            <article key={item.id} className="analytics-activity-list__item">
-              <div className="analytics-activity-list__meta">
-                <strong>{item.eventLabel}</strong>
-                <span>{item.listingTitle}</span>
-              </div>
-              <div className="analytics-activity-list__details">
-                <span>{formatUiDate(item.occurredAt, lang, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) || copy.noDate}</span>
-                <span>{formatBreakdownLabel(item.deviceType || "unknown")}</span>
-                <span>{formatBreakdownLabel(item.referrerDomain || "direct")}</span>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function ListingPerformanceTable({ rows, timeframe, isBusiness, copy }) {
+function ListingPerformanceTable({ rows, timeframe, copy }) {
   if (!rows.length) {
     const timeframeLabel = ANALYTICS_TIMEFRAMES.find((item) => item.id === timeframe)?.label || copy.tableEmptySuffix;
     return <div className="analytics-table__empty">{[copy.tableEmptyPrefix, timeframeLabel].filter(Boolean).join(" ")}</div>;
@@ -311,23 +221,29 @@ function ListingPerformanceTable({ rows, timeframe, isBusiness, copy }) {
       <div className="analytics-table__head">
         <span>{copy.tableListing}</span>
         <span>{copy.tableViews}</span>
-        <span>{copy.tableWhatsapp}</span>
+        <span>{copy.tableUnique}</span>
         <span>{copy.tableLeads}</span>
-        <span>{isBusiness ? copy.tableConv : copy.tableStatus}</span>
+        <span>{copy.tablePriority}</span>
       </div>
       <div className="analytics-table__body">
-        {rows.map((row) => (
-          <div className="analytics-table__row" key={row.listingId}>
-            <span className="analytics-table__listing">
-              <strong>{row.listingTitle}</strong>
-              <small>{row.location || row.category || copy.noLocation}</small>
-            </span>
-            <span>{Number(row.metrics?.views || 0)}</span>
-            <span>{Number(row.metrics?.whatsappClicks || 0)}</span>
-            <span>{Number(row.metrics?.leads || 0)}</span>
-            <span>{isBusiness ? <strong>{`${Number(row.conversionRate || 0).toFixed(1)}%`}</strong> : <small className="analytics-table__hint">{copy.basic}</small>}</span>
-          </div>
-        ))}
+        {rows.map((row) => {
+          const pill = getPriorityPill(row, copy);
+          return (
+            <div className="analytics-table__row" key={row.listingId}>
+              <span className="analytics-table__listing">
+                <strong>{row.listingTitle}</strong>
+                <small>{row.location || row.category || copy.noLocation}</small>
+              </span>
+              <span>{Number(row.metrics?.views || 0)}</span>
+              <span>{Number(row.metrics?.uniqueViews || 0)}</span>
+              <span>{Number(row.metrics?.leads || 0)}</span>
+              <span className="analytics-table__priority">
+                <span className={`analytics-status-pill ${pill.className}`}>{pill.label}</span>
+                <small>Lead rate: {pill.leadRate}</small>
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -340,26 +256,15 @@ export default function ListingAnalyticsDashboard({ user, isAdmin = false }) {
   const formatMetric = (value) => numberFormatter.format(Number(value) || 0);
   const formatPercent = (value) => `${Number(value || 0).toFixed(1)}%`;
 
-  const kpiCards = useMemo(
-    () => [
-      { key: "views", label: copy.kpi.views, icon: "eye", tone: "default" },
-      { key: "uniqueViews", label: copy.kpi.uniqueViews, icon: "users", tone: "default" },
-      { key: "whatsappClicks", label: copy.kpi.whatsappClicks, icon: "comment-dots", tone: "accent" },
-      { key: "leads", label: copy.kpi.leads, icon: "sparkles", tone: "accent" },
-    ],
-    [copy]
-  );
-
   const [timeframe, setTimeframe] = useState("30d");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadedAt] = useState(() => new Date());
   const [state, setState] = useState({
     subscription: null,
     summary: null,
-    details: null,
     listingStats: [],
     dailyStats: [],
-    recentActivity: [],
     recentLeads: [],
   });
 
@@ -377,32 +282,22 @@ export default function ListingAnalyticsDashboard({ user, isAdmin = false }) {
         if (!isAdmin && !hasBasicAnalyticsAccess(subscription)) {
           if (!active) return;
           startTransition(() => {
-            setState({
-              subscription,
-              summary: null,
-              details: null,
-              listingStats: [],
-              dailyStats: [],
-              recentActivity: [],
-              recentLeads: [],
-            });
+            setState({ subscription, summary: null, listingStats: [], dailyStats: [], recentLeads: [] });
           });
           return;
         }
 
         const shouldLoadAdvanced = isAdmin || hasBusinessAnalyticsAccess(subscription);
-        const [summary, details, listingStats, dailyStats, recentActivity, recentLeads] = await Promise.all([
+        const [summary, listingStats, dailyStats, recentLeads] = await Promise.all([
           getOwnerAnalyticsSummary(user.id),
-          shouldLoadAdvanced ? getOwnerAnalyticsDetails(user.id) : Promise.resolve(null),
           listOwnerListingStats(user.id),
           listOwnerDailyStats(user.id, getDateKeyDaysAgo(29)),
-          shouldLoadAdvanced ? listOwnerRecentActivity(user.id, 14) : Promise.resolve([]),
           shouldLoadAdvanced ? listOwnerRecentLeads(user.id, 8) : Promise.resolve([]),
         ]);
 
         if (!active) return;
         startTransition(() => {
-          setState({ subscription, summary, details, listingStats, dailyStats, recentActivity, recentLeads });
+          setState({ subscription, summary, listingStats, dailyStats, recentLeads });
         });
       } catch (loadError) {
         console.error("Failed to load analytics dashboard:", loadError);
@@ -413,19 +308,12 @@ export default function ListingAnalyticsDashboard({ user, isAdmin = false }) {
     };
 
     load();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [copy.error, isAdmin, user?.id]);
 
   const subscription = state.subscription;
   const hasBasic = isAdmin || hasBasicAnalyticsAccess(subscription);
   const hasBusiness = isAdmin || hasBusinessAnalyticsAccess(subscription);
-  const subscriptionMeta = subscription?.status === "pending"
-    ? copy.pendingPlan
-    : subscription?.expiresAt
-    ? `${copy.expiresOn} ${formatUiDate(subscription.expiresAt, lang, { day: "2-digit", month: "short", year: "numeric" })}`
-    : copy.inactivePlan;
 
   const ownerTotals = useMemo(
     () => buildOwnerTotalsForTimeframe(state.summary, state.dailyStats, timeframe),
@@ -438,6 +326,32 @@ export default function ListingAnalyticsDashboard({ user, isAdmin = false }) {
   );
 
   const timeline = useMemo(() => buildOwnerTimeline(state.dailyStats, 30), [state.dailyStats]);
+
+  const activeListingCount = listingRows.length;
+  const avgViewsPerListing = activeListingCount > 0
+    ? (Number(ownerTotals.views) / activeListingCount).toFixed(1)
+    : "0.0";
+
+  const topReachListing = useMemo(
+    () => [...listingRows].sort((a, b) => Number(b.metrics?.views || 0) - Number(a.metrics?.views || 0))[0],
+    [listingRows]
+  );
+  const warnListing = useMemo(
+    () => listingRows.find((r) => Number(r.metrics?.views || 0) >= 5 && Number(r.metrics?.leads || 0) === 0),
+    [listingRows]
+  );
+
+  const hasContactData = Number(ownerTotals.whatsappClicks || 0) + Number(ownerTotals.phoneClicks || 0) + Number(ownerTotals.contactSubmits || 0) > 0;
+
+  const periodLabel = ANALYTICS_TIMEFRAMES.find((item) => item.id === timeframe)?.label || "30d";
+
+  const planBadgeId = subscription?.planId || "free";
+  const planBadgeLabel = subscription?.planLabel || copy.noPlan;
+
+  const expiresLine = subscription?.expiresAt
+    ? `${copy.expiresOn} ${formatUiDate(subscription.expiresAt, lang, { day: "2-digit", month: "short", year: "numeric" })}`
+    : null;
+  const updatedLine = `${copy.updatedLabel} ${formatUiDate(loadedAt, lang, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`;
 
   if (loading) {
     return (
@@ -467,12 +381,31 @@ export default function ListingAnalyticsDashboard({ user, isAdmin = false }) {
           <p className="my-posts-header__eyebrow">{copy.heroEyebrow}</p>
           <h2 className="analytics-hero__title">{copy.heroTitle}</h2>
           <p className="analytics-hero__subtitle">{copy.heroSubtitle}</p>
+          {hasBasic && (
+            <div className="analytics-hero__highlights">
+              <div className="analytics-hero__highlight">
+                <strong>{activeListingCount}</strong>
+                <span>{copy.highlightListings}</span>
+              </div>
+              <div className="analytics-hero__highlight">
+                <strong>{formatMetric(ownerTotals.leads)}</strong>
+                <span>{copy.highlightLeads}</span>
+              </div>
+              <div className="analytics-hero__highlight">
+                <strong>{avgViewsPerListing}</strong>
+                <span>{copy.highlightAvgViews}</span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="analytics-hero__aside">
-          <span className={`analytics-plan-badge analytics-plan-badge--${subscription?.planId || "free"}`}>
-            {subscription?.planLabel || copy.noPlan}
+          <span className={`analytics-plan-badge analytics-plan-badge--${planBadgeId}`}>
+            {planBadgeLabel}
           </span>
-          <p className="analytics-hero__meta">{subscriptionMeta}</p>
+          <div className="analytics-hero__meta">
+            {expiresLine && <span>{expiresLine}</span>}
+            <span>{updatedLine}</span>
+          </div>
         </div>
       </header>
 
@@ -510,72 +443,122 @@ export default function ListingAnalyticsDashboard({ user, isAdmin = false }) {
           </div>
 
           {!state.listingStats.length ? (
-            <AnalyticsEmptyState copy={copy} />
+            <div className="analytics-empty">
+              <Icon n="chart-line" />
+              <h3>{copy.emptyTitle}</h3>
+              <p>{copy.emptyCopy}</p>
+            </div>
           ) : (
             <>
-              <div className="analytics-stat-grid">
-                {kpiCards.map((card) => (
+              <div className="analytics-overview">
+                <div className="analytics-stat-grid">
                   <AnalyticsStatCard
-                    key={card.key}
-                    label={card.label}
-                    icon={card.icon}
-                    tone={card.tone}
-                    value={formatMetric(ownerTotals[card.key])}
-                    helper={`${copy.periodLabel}: ${ANALYTICS_TIMEFRAMES.find((item) => item.id === timeframe)?.label || "30d"}`}
+                    label={copy.kpi.views}
+                    icon="eye"
+                    tone="default"
+                    value={formatMetric(ownerTotals.views)}
+                    helper={`${copy.viewsHelper}: ${periodLabel}`}
                     copy={copy}
                   />
-                ))}
-                <AnalyticsStatCard
-                  label={copy.kpi.conversionRate}
-                  icon="chart-line"
-                  tone="premium"
-                  value={formatPercent(ownerTotals.conversionRate)}
-                  helper="Leads / Views"
-                  locked={!hasBusiness}
-                  copy={copy}
-                />
+                  <AnalyticsStatCard
+                    label={copy.kpi.uniqueViews}
+                    icon="users"
+                    tone="default"
+                    value={formatMetric(ownerTotals.uniqueViews)}
+                    helper={copy.uniqueHelper}
+                    copy={copy}
+                  />
+                  <AnalyticsStatCard
+                    label={copy.kpi.leads}
+                    icon="sparkles"
+                    tone="accent"
+                    value={formatMetric(ownerTotals.leads)}
+                    helper={copy.leadsHelper}
+                    copy={copy}
+                  />
+                  <AnalyticsStatCard
+                    label={copy.kpi.leadRate}
+                    icon="chart-line"
+                    tone="premium"
+                    value={formatPercent(ownerTotals.conversionRate)}
+                    helper={copy.leadRateHelper}
+                    locked={!hasBusiness}
+                    copy={copy}
+                  />
+                </div>
+
+                <section className="analytics-panel analytics-panel--priority">
+                  <div className="analytics-block__head">
+                    <div>
+                      <h3>{copy.focusTitle}</h3>
+                      <p>{copy.focusCopy}</p>
+                    </div>
+                  </div>
+                  <div className="analytics-focus-list">
+                    {topReachListing && (
+                      <article className="analytics-focus-card">
+                        <span className="analytics-focus-card__eyebrow">{copy.topReachLabel}</span>
+                        <strong>{topReachListing.listingTitle}</strong>
+                        <p>{Number(topReachListing.metrics?.views || 0)} views / {Number(topReachListing.metrics?.leads || 0)} leads</p>
+                      </article>
+                    )}
+                    {warnListing && (
+                      <article className="analytics-focus-card analytics-focus-card--warn">
+                        <span className="analytics-focus-card__eyebrow">{copy.needsImprovementLabel}</span>
+                        <strong>{warnListing.listingTitle}</strong>
+                        <p>{Number(warnListing.metrics?.views || 0)} views / {Number(warnListing.metrics?.leads || 0)} leads</p>
+                      </article>
+                    )}
+                  </div>
+                </section>
               </div>
 
               <div className="analytics-grid">
                 <section className="analytics-panel analytics-panel--wide">
                   <div className="analytics-block__head">
                     <div>
-                      <h3>{copy.sectionPerformance}</h3>
-                      <p>{timeframe === "all" ? copy.sectionPerformanceAll : copy.sectionPerformanceRange}</p>
+                      <h3>{copy.perfTitle}</h3>
+                      <p>{copy.perfCopy}</p>
                     </div>
                   </div>
-                  <ListingPerformanceTable rows={listingRows} timeframe={timeframe} isBusiness={hasBusiness} copy={copy} />
+                  <ListingPerformanceTable rows={listingRows} timeframe={timeframe} copy={copy} />
                 </section>
 
                 <section className="analytics-panel">
                   <div className="analytics-block__head">
                     <div>
-                      <h3>{copy.quickView}</h3>
-                      <p>{copy.quickViewCopy}</p>
+                      <h3>{copy.contactChannelsTitle}</h3>
+                      <p>{copy.contactChannelsCopy}</p>
                     </div>
                   </div>
-                  <dl className="analytics-summary-list">
-                    <div>
-                      <dt>{copy.totalListings}</dt>
-                      <dd>{formatMetric(state.summary?.listingCount || state.listingStats.length)}</dd>
-                    </div>
-                    <div>
-                      <dt>{copy.totalPhoneClicks}</dt>
-                      <dd>{formatMetric(ownerTotals.phoneClicks)}</dd>
-                    </div>
-                    <div>
-                      <dt>{copy.contactSubmits}</dt>
-                      <dd>{formatMetric(ownerTotals.contactSubmits)}</dd>
-                    </div>
-                    <div>
-                      <dt>{copy.leadRate}</dt>
-                      <dd>{formatPercent(ownerTotals.conversionRate)}</dd>
-                    </div>
-                  </dl>
+                  {hasContactData ? (
+                    <ul className="analytics-breakdown-list">
+                      {Number(ownerTotals.whatsappClicks || 0) > 0 && (
+                        <li className="analytics-breakdown-list__item">
+                          <span>{copy.whatsappChannel}</span>
+                          <strong>{Number(ownerTotals.whatsappClicks)}</strong>
+                        </li>
+                      )}
+                      {Number(ownerTotals.phoneClicks || 0) > 0 && (
+                        <li className="analytics-breakdown-list__item">
+                          <span>{copy.phoneChannel}</span>
+                          <strong>{Number(ownerTotals.phoneClicks)}</strong>
+                        </li>
+                      )}
+                      {Number(ownerTotals.contactSubmits || 0) > 0 && (
+                        <li className="analytics-breakdown-list__item">
+                          <span>{copy.formChannel}</span>
+                          <strong>{Number(ownerTotals.contactSubmits)}</strong>
+                        </li>
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="analytics-breakdown-card__empty">{copy.contactChannelsEmpty}</p>
+                  )}
                 </section>
               </div>
 
-              <div className="analytics-grid analytics-grid--secondary">
+              <div className="analytics-grid">
                 <section className="analytics-panel analytics-panel--wide">
                   <div className="analytics-block__head">
                     <div>
@@ -583,70 +566,34 @@ export default function ListingAnalyticsDashboard({ user, isAdmin = false }) {
                       <p>{copy.trendCopy}</p>
                     </div>
                   </div>
-                  {hasBusiness ? <TimelineChart items={timeline} /> : <AnalyticsLockedPanel compact copy={copy} />}
+                  <TimelineChart items={timeline} />
                 </section>
 
                 <section className="analytics-panel">
                   <div className="analytics-block__head">
                     <div>
-                      <h3>{copy.trustTitle}</h3>
-                      <p>{copy.trustCopy}</p>
+                      <h3>{copy.recentLeadsTitle}</h3>
+                      <p>{copy.recentLeadsCopy}</p>
                     </div>
                   </div>
-                  <div className="analytics-mini-cards">
-                    <article>
-                      <span>{copy.leadsToday}</span>
-                      <strong>{buildOwnerTotalsForTimeframe(state.summary, state.dailyStats, "today").leads}</strong>
-                    </article>
-                    <article>
-                      <span>{copy.views7d}</span>
-                      <strong>{buildOwnerTotalsForTimeframe(state.summary, state.dailyStats, "7d").views}</strong>
-                    </article>
-                    <article>
-                      <span>{copy.whatsapp30d}</span>
-                      <strong>{buildOwnerTotalsForTimeframe(state.summary, state.dailyStats, "30d").whatsappClicks}</strong>
-                    </article>
-                  </div>
+                  {state.recentLeads.length === 0 ? (
+                    <p className="analytics-breakdown-card__empty">{copy.noLeadsYet}</p>
+                  ) : (
+                    <div className="analytics-activity-list">
+                      {state.recentLeads.map((item) => (
+                        <article key={item.id} className="analytics-activity-list__item">
+                          <div className="analytics-activity-list__meta">
+                            <strong>{item.eventLabel}</strong>
+                            <span>{item.listingTitle}</span>
+                          </div>
+                          <div className="analytics-activity-list__details">
+                            <span>{formatUiDate(item.occurredAt, lang, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </section>
-              </div>
-
-              <div className="analytics-grid analytics-grid--secondary">
-                {hasBusiness ? (
-                  <>
-                    <BreakdownList title={copy.sourcesTitle} items={state.details?.sourceBreakdown || []} emptyText={copy.sourcesEmpty} />
-                    <BreakdownList title={copy.devicesTitle} items={state.details?.deviceBreakdown || []} emptyText={copy.devicesEmpty} />
-                    <BreakdownList title={copy.referrersTitle} items={state.details?.referrerBreakdown || []} emptyText={copy.referrersEmpty} />
-                  </>
-                ) : (
-                  <section className="analytics-panel analytics-panel--wide">
-                    <div className="analytics-block__head">
-                      <div>
-                        <h3>{copy.advancedTitle}</h3>
-                        <p>{copy.advancedCopy}</p>
-                      </div>
-                    </div>
-                    <AnalyticsLockedPanel compact copy={copy} />
-                  </section>
-                )}
-              </div>
-
-              <div className="analytics-grid analytics-grid--secondary">
-                {hasBusiness ? (
-                  <>
-                    <ActivityList title={copy.recentActivity} items={state.recentActivity} copy={copy} lang={lang} />
-                    <ActivityList title={copy.recentLeads} items={state.recentLeads} leadOnly copy={copy} lang={lang} />
-                  </>
-                ) : (
-                  <section className="analytics-panel analytics-panel--wide">
-                    <div className="analytics-block__head">
-                      <div>
-                        <h3>{copy.insightsTitle}</h3>
-                        <p>{copy.insightsCopy}</p>
-                      </div>
-                    </div>
-                    <AnalyticsLockedPanel compact copy={copy} />
-                  </section>
-                )}
               </div>
             </>
           )}

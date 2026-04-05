@@ -682,14 +682,13 @@ export default function AdminDashboardPage({ user }) {
           meta={
             <div className="modern-sidebar__meta-card">
               <span className="modern-sidebar__meta-label">Admin aktiv</span>
-              <strong>{user.name}</strong>
+              <strong>Villa Apartamente</strong>
               <small>Qasje e plote ne moderim, perdorues dhe pagesa.</small>
             </div>
           }
           onMobileClose={() => setIsSidebarMobileOpen(false)}
           onSelect={setTab}
           onToggleCollapse={() => setIsSidebarCollapsed((current) => !current)}
-          subtitle={user.name}
           title="Admin Dashboard"
         />
 

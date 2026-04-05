@@ -8,6 +8,7 @@ import {
   getExperienceDetailPath,
   getExperienceHomePath,
   getListingExperience,
+  getPremiumPlanNavigationTarget,
   getPricingPlansPath,
   normalizeExperience,
 } from "../utils/experience.js";
@@ -615,30 +616,11 @@ export function PremiumSection({ user, collectionName = "villas", limitCount = 6
 
   const handlePremiumAction = (item) => {
     const listingExperience = getListingExperience(item);
-    const pricingPath = getPricingPlansPath(listingExperience);
-    const [pathname, currentSearch = ""] = pricingPath.split("?");
-    const searchParams = new URLSearchParams(currentSearch);
-
-    searchParams.set("planId", "premium");
-    searchParams.set("listingId", item.id);
-
-    routerNavigate({
-      pathname,
-      search: `?${searchParams.toString()}`,
-    });
+    routerNavigate(getPremiumPlanNavigationTarget(listingExperience, item.id));
   };
 
   const handleGoPremium = () => {
-    const pricingPath = getPricingPlansPath(experience);
-    const [pathname, currentSearch = ""] = pricingPath.split("?");
-    const searchParams = new URLSearchParams(currentSearch);
-
-    searchParams.set("planId", "premium");
-
-    routerNavigate({
-      pathname,
-      search: `?${searchParams.toString()}`,
-    });
+    routerNavigate(getPremiumPlanNavigationTarget(experience));
   };
 
   useEffect(() => {

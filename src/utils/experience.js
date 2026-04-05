@@ -37,6 +37,25 @@ export const getPricingPlansPath = (experience = "villas") => {
   return resolved === "apartments" ? "/pricing-plans?mode=apartments" : "/pricing-plans";
 };
 
+export const getPremiumPlanNavigationTarget = (experience = "villas", listingId = "") => {
+  const pricingPath = getPricingPlansPath(experience);
+  const [pathname, currentSearch = ""] = pricingPath.split("?");
+  const searchParams = new URLSearchParams(currentSearch);
+
+  searchParams.set("planId", "premium");
+
+  if (listingId) {
+    searchParams.set("listingId", listingId);
+  } else {
+    searchParams.delete("listingId");
+  }
+
+  return {
+    pathname,
+    search: `?${searchParams.toString()}`,
+  };
+};
+
 export const getExperienceCatalogPath = (experience = "villas") =>
   getExperienceConfig(normalizeExperience(experience)).route;
 

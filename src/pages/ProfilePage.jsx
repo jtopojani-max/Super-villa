@@ -10,7 +10,7 @@ import { setUser } from "../utils/storage.js";
 import { getListingsByIds } from "../services/listings.js";
 import { listMyPosts, deletePost, onPendingCount } from "../services/posts.js";
 import { listSavedListingIds, toggleSavedListing, updateUserProfile } from "../services/users.js";
-import { getExperienceDetailPath, getListingExperience, getPricingPlansPath } from "../utils/experience.js";
+import { getExperienceDetailPath, getListingExperience, getPremiumPlanNavigationTarget } from "../utils/experience.js";
 
 const parseName = (name = "") => {
   const [firstName = "", ...rest] = name.trim().split(" ");
@@ -248,17 +248,7 @@ export default function ProfilePage({ user, onLogout, onUpdateUser }) {
 
   const handlePremiumAction = (post) => {
     const listingExperience = getListingExperience(post);
-    const pricingPath = getPricingPlansPath(listingExperience);
-    const [pathname, currentSearch = ""] = pricingPath.split("?");
-    const searchParams = new URLSearchParams(currentSearch);
-
-    searchParams.set("planId", "premium");
-    searchParams.set("listingId", post.id);
-
-    navigate({
-      pathname,
-      search: `?${searchParams.toString()}`,
-    });
+    navigate(getPremiumPlanNavigationTarget(listingExperience, post.id));
   };
 
   return (
