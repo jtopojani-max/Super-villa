@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
 import ExperienceSwitch from "../components/ExperienceSwitch.jsx";
 import { Footer, Icon, Navbar, PremiumSection, PropertyCard } from "../components/Shared.jsx";
@@ -60,6 +61,41 @@ const formatLocationCountLabel = (location, counts = {}, experience = "villas") 
 
   return `${location} (${formattedCount})`;
 };
+
+const HERO_SHAPES = [
+  { width: 520, height: 320, top: "-12%", left: "-8%", rotate: -22, gradient: "radial-gradient(ellipse, rgba(247,176,91,0.55) 0%, rgba(247,176,91,0.18) 55%, transparent 100%)", delay: 0 },
+  { width: 380, height: 240, top: "5%",   right: "-6%", rotate: 18,  gradient: "radial-gradient(ellipse, rgba(255,255,255,0.22) 0%, rgba(247,176,91,0.18) 55%, transparent 100%)", delay: 0.3 },
+  { width: 300, height: 420, bottom: "8%", left: "4%",  rotate: 30,  gradient: "radial-gradient(ellipse, rgba(247,176,91,0.40) 0%, rgba(180,120,40,0.14) 60%, transparent 100%)", delay: 0.6 },
+  { width: 260, height: 200, bottom: "2%", right: "3%", rotate: -14, gradient: "radial-gradient(ellipse, rgba(255,255,255,0.18) 0%, rgba(247,176,91,0.14) 55%, transparent 100%)", delay: 0.15 },
+  { width: 180, height: 180, top: "38%",  left: "46%", rotate: 45,  gradient: "radial-gradient(ellipse, rgba(247,176,91,0.35) 0%, transparent 70%)", delay: 0.5 },
+];
+
+function FloatingShape({ width, height, top, left, right, bottom, rotate, gradient, delay }) {
+  return (
+    /* Outer: entrance animation (opacity + drop + rotate) */
+    <motion.div
+      aria-hidden="true"
+      style={{ position: "absolute", top, left, right, bottom, width, height, pointerEvents: "none" }}
+      initial={{ opacity: 0, y: -150, rotate: rotate - 15 }}
+      animate={{ opacity: 1, y: 0, rotate }}
+      transition={{ duration: 2.4, ease: [0.23, 0.86, 0.39, 0.96], delay }}
+    >
+      {/* Inner: infinite gentle float */}
+      <motion.div
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: "50%",
+          background: gradient,
+          boxShadow: "0 0 80px rgba(247,176,91,0.20)",
+          filter: "blur(32px)",
+        }}
+        animate={{ y: [0, 15, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: delay + 2.4 }}
+      />
+    </motion.div>
+  );
+}
 
 function SelectField({ label, icon, value, onChange, options }) {
   return (
@@ -296,16 +332,31 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
 
       <section className="hero">
         <div id="hero-bg" className="hero__bg" />
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 6 }}>
+          {HERO_SHAPES.map((shape, i) => (
+            <FloatingShape key={i} {...shape} />
+          ))}
+        </div>
         <div className="hero__content">
-          <div className="hero__topbar">
+          <motion.div
+            className="hero__topbar"
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.23, 0.86, 0.39, 0.96], delay: 0.1 }}
+          >
             <ExperienceSwitch
               value={experience}
               onChange={(nextExperience) => navigate(getExperienceHomePath(nextExperience))}
               className="hero__switch"
             />
-          </div>
+          </motion.div>
 
-          <div className="hero__copy">
+          <motion.div
+            className="hero__copy"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.23, 0.86, 0.39, 0.96], delay: 0.28 }}
+          >
             <p className="hero__label">{t(`${expKey}.heroEyebrow`)}</p>
             <h1 className="hero__title">
               {t(`${expKey}.heroTitlePrefix`)}
@@ -313,9 +364,14 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
               <em>{t(`${expKey}.heroTitleEmphasis`)}</em>
             </h1>
             <p className="hero__sub">{t(`${expKey}.heroSubtitle`)}</p>
-          </div>
+          </motion.div>
 
-          <div className="search-shell">
+          <motion.div
+            initial={{ opacity: 0, y: 48 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: [0.23, 0.86, 0.39, 0.96], delay: 0.48 }}
+          >
+            <div className="search-shell">
             <form className="search-strip" onSubmit={handleSearch} aria-label={t(`${expKey}.searchAriaLabel`)}>
               <div ref={keywordFieldRef} className="search-strip__cell search-strip__cell--keyword">
                 <span className="search-field__label">
@@ -368,6 +424,7 @@ export default function HomePage({ user, onLogout, onUpdateUser }) {
               </button>
             </form>
           </div>
+          </motion.div>
         </div>
       </section>
 

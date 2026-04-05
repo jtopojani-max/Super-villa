@@ -13,6 +13,7 @@
     "@iconify/react": "^6.0.2",
     "@react-google-maps/api": "^2.20.8",
     "firebase": "^12.10.0",
+    "framer-motion": "^12.38.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.7.0",
     "playwright": "^1.59.1",
