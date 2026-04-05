@@ -21,6 +21,12 @@ const VillaDetailsPage = lazy(() => import("./pages/VillaDetailsPage.jsx"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage.jsx"));
 const PricingPlansPage = lazy(() => import("./pages/PricingPlansPage.jsx"));
 
+const AUTH_LOADING_ICONS = [
+  { id: "house", file: "ph--house-line-light.svg", delay: "0s" },
+  { id: "building", file: "mdi--building.svg", delay: "0.15s" },
+  { id: "verified", file: "mdi--verified-user.svg", delay: "0.3s" },
+];
+
 function RequireAuth({ user, children }) {
   if (!user) return <Navigate to="/login" replace />;
   return children;
@@ -42,6 +48,30 @@ function ScrollToTop({ pathname }) {
     window.scrollTo(0, 0);
   }, [pathname]);
   return null;
+}
+
+function AuthLoader({ label }) {
+  return (
+    <div className="auth-loader" role="status" aria-live="polite" aria-label={label}>
+      <div className="auth-loader__stage" aria-hidden="true">
+        <span className="auth-loader__glow" />
+        <div className="auth-loader__icons">
+          {AUTH_LOADING_ICONS.map(({ id, file, delay }) => (
+            <span key={id} className="auth-loader__icon-shell" style={{ animationDelay: delay }}>
+              <span
+                className="auth-loader__icon"
+                style={{
+                  WebkitMaskImage: `url('/icons/${file}')`,
+                  maskImage: `url('/icons/${file}')`,
+                }}
+              />
+            </span>
+          ))}
+        </div>
+      </div>
+      <span className="sr-only">{label}</span>
+    </div>
+  );
 }
 
 export default function App() {
@@ -124,7 +154,7 @@ function AppInner() {
           try {
             const profile = await getUserProfile(firebaseUser.uid);
             if (profile?.role) fallbackRole = profile.role;
-          } catch (_) { /* ignore */ }
+          } catch { /* ignore */ }
           const fallbackUser = {
             id: firebaseUser.uid,
             name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Perdorues",
@@ -169,9 +199,7 @@ function AppInner() {
     return (
       <>
         <style>{CSS}</style>
-        <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "#334155" }}>
-          {t("meta.verifyingSession")}
-        </div>
+        <AuthLoader label={t("meta.verifyingSession")} />
       </>
     );
   }

@@ -47,6 +47,99 @@ const CSS = `
   html { scroll-behavior: smooth; }
   body { font-family: var(--font-body); background: var(--cream); color: var(--text); line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
   #root { min-height: 100vh; }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .auth-loader {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background:
+      radial-gradient(circle at 50% 22%, rgba(247,176,91,.18), transparent 32%),
+      linear-gradient(180deg, #fcfaf5 0%, #f6efe5 100%);
+    overflow: hidden;
+  }
+  .auth-loader__stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: min(76vw, 220px);
+    aspect-ratio: 1;
+  }
+  .auth-loader__glow {
+    position: absolute;
+    inset: 20%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(247,176,91,.28) 0%, rgba(247,176,91,.08) 45%, rgba(247,176,91,0) 72%);
+    filter: blur(6px);
+    animation: authLoaderGlow 2.4s ease-in-out infinite;
+  }
+  .auth-loader__icons {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  .auth-loader__icon-shell {
+    width: 58px;
+    height: 58px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,.92);
+    border: 1px solid rgba(247,176,91,.22);
+    box-shadow:
+      0 16px 40px rgba(15,27,45,.12),
+      inset 0 1px 0 rgba(255,255,255,.75);
+    animation: authLoaderFloat 1.8s ease-in-out infinite;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .auth-loader__icon-shell:nth-child(2) { margin-top: -18px; }
+  .auth-loader__icon {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--gold) 100%);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+  @keyframes authLoaderFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes authLoaderGlow {
+    0%, 100% { transform: scale(.96); opacity: .72; }
+    50% { transform: scale(1.08); opacity: 1; }
+  }
+  @media (max-width: 480px) {
+    .auth-loader__icons { gap: 10px; }
+    .auth-loader__icon-shell {
+      width: 50px;
+      height: 50px;
+      border-radius: 16px;
+    }
+    .auth-loader__icon {
+      width: 24px;
+      height: 24px;
+    }
+  }
 
   /* NAVBAR SPACING */
   .with-navbar-space { padding-top: 68px; }
