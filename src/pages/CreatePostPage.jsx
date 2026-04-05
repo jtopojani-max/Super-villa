@@ -12,8 +12,13 @@ import { normalizeListingFeatures } from "../utils/listingFeatures.js";
 import { createPost, listMyPosts } from "../services/posts.js";
 import { getUserSubscription } from "../services/subscriptions.js";
 import spinnerSrc from "../assets/spinner-gooey.svg";
+import airbnbLogo from "../assets/airbnb-tile.svg";
 
 const FREE_PLAN_MAX_LISTINGS = 1;
+
+const AIRBNB_URL_REGEX = /^https?:\/\/(www\.)?(airbnb\.[a-z]{2,}|abnb\.me)(\/.*)?$/i;
+
+const isValidAirbnbUrl = (url) => AIRBNB_URL_REGEX.test((url || "").trim());
 
 const EMPTY = {
   title: "",
@@ -39,6 +44,8 @@ const EMPTY = {
   placeType: "",
   lat: null,
   lng: null,
+  hasAirbnb: false,
+  airbnbUrl: "",
 };
 
 const CATEGORIES = ["Villa", "Apartament"];
@@ -234,6 +241,14 @@ export default function CreatePostPage({ user }) {
       setError(t("createPost.invalidPhotoUrl"));
       return;
     }
+    if (form.hasAirbnb && !form.airbnbUrl.trim()) {
+      setError(t("createPost.airbnbUrlRequired"));
+      return;
+    }
+    if (form.hasAirbnb && !isValidAirbnbUrl(form.airbnbUrl)) {
+      setError(t("createPost.airbnbUrlInvalid"));
+      return;
+    }
 
     const fullPhone = form.phoneCode + cleanPhone;
     setSubmitting(true);
@@ -257,6 +272,8 @@ export default function CreatePostPage({ user }) {
         companyName: "",
         isPremium: false,
         premiumOrder: null,
+        hasAirbnb: form.hasAirbnb,
+        airbnbUrl: form.hasAirbnb ? form.airbnbUrl.trim() : null,
         address: form.address,
         city: form.city,
         country: form.country || "Kosovo",
@@ -389,6 +406,39 @@ export default function CreatePostPage({ user }) {
               <div className="form-group">
                 <label>{t("createPost.guestsLabel")}</label>
                 <input type="number" min="1" value={form.guests} onChange={(event) => set("guests", event.target.value)} placeholder="8" />
+              </div>
+
+              <div className="form-group form-group--full">
+                <label className="airbnb-toggle-label">
+                  <input
+                    type="checkbox"
+                    className="airbnb-toggle-checkbox"
+                    checked={form.hasAirbnb}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        hasAirbnb: event.target.checked,
+                        airbnbUrl: event.target.checked ? current.airbnbUrl : "",
+                      }))
+                    }
+                  />
+                  <span className="airbnb-toggle-text">
+                    <img src={airbnbLogo} alt="" width="20" height="20" className="airbnb-icon" aria-hidden="true" />
+                    {t("createPost.airbnbToggle")}
+                  </span>
+                </label>
+                {form.hasAirbnb && (
+                  <div className="airbnb-url-field">
+                    <label htmlFor="airbnb-url-create">{t("createPost.airbnbUrlLabel")}</label>
+                    <input
+                      id="airbnb-url-create"
+                      type="url"
+                      value={form.airbnbUrl}
+                      onChange={(event) => set("airbnbUrl", event.target.value)}
+                      placeholder={t("createPost.airbnbUrlPlaceholder")}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="form-group" ref={phoneWrapperRef} style={{ position: "relative" }}>

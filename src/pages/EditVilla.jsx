@@ -11,6 +11,7 @@ import { CITIES } from "../utils/storage.js";
 import { isValidImageUrl } from "../utils/imageUpload.js";
 import { normalizeListingFeatures } from "../utils/listingFeatures.js";
 import { getPostById, updatePost } from "../services/posts.js";
+import airbnbLogo from "../assets/airbnb-tile.svg";
 
 const EMPTY = {
   title: "",
@@ -32,12 +33,17 @@ const EMPTY = {
   country: "",
   lat: null,
   lng: null,
+  hasAirbnb: false,
+  airbnbUrl: "",
 };
 
 const CATEGORIES = ["Villa", "Apartament"];
 
 const sanitizeWhatsapp = (value) => value.replace(/[^\d+]/g, "").replace(/^00/, "+");
 const isValidWhatsapp = (value) => /^\+?\d{8,15}$/.test(value);
+
+const AIRBNB_URL_REGEX = /^https?:\/\/(www\.)?(airbnb\.[a-z]{2,}|abnb\.me)(\/.*)?$/i;
+const isValidAirbnbUrl = (url) => AIRBNB_URL_REGEX.test((url || "").trim());
 
 const mapPostToForm = (post) => ({
   title: post.title || "",
@@ -59,6 +65,8 @@ const mapPostToForm = (post) => ({
   country: post.country || "",
   lat: post.lat || null,
   lng: post.lng || null,
+  hasAirbnb: Boolean(post.hasAirbnb),
+  airbnbUrl: post.airbnbUrl || "",
 });
 
 export default function EditVilla({ user }) {
@@ -186,6 +194,14 @@ export default function EditVilla({ user }) {
       setError(t("editPost.invalidWhatsApp"));
       return;
     }
+    if (form.hasAirbnb && !form.airbnbUrl.trim()) {
+      setError(t("editPost.airbnbUrlRequired"));
+      return;
+    }
+    if (form.hasAirbnb && !isValidAirbnbUrl(form.airbnbUrl)) {
+      setError(t("editPost.airbnbUrlInvalid"));
+      return;
+    }
 
     setSubmitting(true);
 
@@ -207,6 +223,8 @@ export default function EditVilla({ user }) {
         companyName: "",
         isPremium: canManagePremium ? form.isPremium : undefined,
         premiumOrder: canManagePremium && form.isPremium ? Number(form.premiumOrder) : null,
+        hasAirbnb: form.hasAirbnb,
+        airbnbUrl: form.hasAirbnb ? form.airbnbUrl.trim() : null,
         address: form.address || "",
         city: form.city || "",
         country: form.country || "",
@@ -380,6 +398,39 @@ export default function EditVilla({ user }) {
               <div className="form-group">
                 <label>{t("createPost.guestsLabel")}</label>
                 <input type="number" min="1" value={form.guests} onChange={(event) => set("guests", event.target.value)} placeholder="8" />
+              </div>
+
+              <div className="form-group form-group--full">
+                <label className="airbnb-toggle-label">
+                  <input
+                    type="checkbox"
+                    className="airbnb-toggle-checkbox"
+                    checked={form.hasAirbnb}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        hasAirbnb: event.target.checked,
+                        airbnbUrl: event.target.checked ? current.airbnbUrl : "",
+                      }))
+                    }
+                  />
+                  <span className="airbnb-toggle-text">
+                    <img src={airbnbLogo} alt="" width="20" height="20" className="airbnb-icon" aria-hidden="true" />
+                    {t("editPost.airbnbToggle")}
+                  </span>
+                </label>
+                {form.hasAirbnb && (
+                  <div className="airbnb-url-field">
+                    <label htmlFor="airbnb-url-edit">{t("editPost.airbnbUrlLabel")}</label>
+                    <input
+                      id="airbnb-url-edit"
+                      type="url"
+                      value={form.airbnbUrl}
+                      onChange={(event) => set("airbnbUrl", event.target.value)}
+                      placeholder={t("editPost.airbnbUrlPlaceholder")}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="form-group">

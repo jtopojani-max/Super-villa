@@ -265,6 +265,11 @@ const sq = {
     invalidData: "Të dhënat janë jo-valide: ",
     networkError: "Problem me internetin. Provo përsëri.",
     publishError: "Gabim gjatë publikimit: ",
+    airbnbToggle: "Kjo pronë është edhe në Airbnb",
+    airbnbUrlLabel: "Linku i Airbnb",
+    airbnbUrlPlaceholder: "https://www.airbnb.com/rooms/xxxxxx",
+    airbnbUrlRequired: "Linku i Airbnb është i detyrueshëm kur opsioni është aktiv.",
+    airbnbUrlInvalid: "Ju lutem vendosni një link valid të Airbnb.",
   },
 
   // ─── Edit Post ──────────────────────────────────────────────────
@@ -299,6 +304,11 @@ const sq = {
     invalidPhotoUrl: "Nje ose me shume foto kane link jo-valid.",
     invalidWhatsApp: "Numri i WhatsApp duhet te jete valid (p.sh. +38349123456).",
     saveError: "Nuk u arrit te ruhen ndryshimet. Provo perseri.",
+    airbnbToggle: "Kjo pronë është edhe në Airbnb",
+    airbnbUrlLabel: "Linku i Airbnb",
+    airbnbUrlPlaceholder: "https://www.airbnb.com/rooms/xxxxxx",
+    airbnbUrlRequired: "Linku i Airbnb është i detyrueshëm kur opsioni është aktiv.",
+    airbnbUrlInvalid: "Ju lutem vendosni një link valid të Airbnb.",
   },
 
   // ─── Property Details ───────────────────────────────────────────
@@ -313,6 +323,7 @@ const sq = {
     priceHint: "Cmimi per person per nate. Kontakto per detaje te metejshme.",
     similarTitle: "Shpallje të Ngjashme",
     sendMessage: "Dërgo Mesazh",
+    viewOnAirbnb: "Shiko në Airbnb",
   },
 
   // ─── Messages / Chat ───────────────────────────────────────────

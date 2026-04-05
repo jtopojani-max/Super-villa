@@ -265,6 +265,11 @@ const en = {
     invalidData: "Data is invalid: ",
     networkError: "Internet connection problem. Please try again.",
     publishError: "Error during publishing: ",
+    airbnbToggle: "This property is also on Airbnb",
+    airbnbUrlLabel: "Airbnb link",
+    airbnbUrlPlaceholder: "https://www.airbnb.com/rooms/xxxxxx",
+    airbnbUrlRequired: "Airbnb link is required when the option is active.",
+    airbnbUrlInvalid: "Please enter a valid Airbnb link.",
   },
 
   // ─── Edit Post ──────────────────────────────────────────────────
@@ -299,6 +304,11 @@ const en = {
     invalidPhotoUrl: "One or more photos have an invalid link.",
     invalidWhatsApp: "WhatsApp number must be valid (e.g. +38349123456).",
     saveError: "Could not save changes. Please try again.",
+    airbnbToggle: "This property is also on Airbnb",
+    airbnbUrlLabel: "Airbnb link",
+    airbnbUrlPlaceholder: "https://www.airbnb.com/rooms/xxxxxx",
+    airbnbUrlRequired: "Airbnb link is required when the option is active.",
+    airbnbUrlInvalid: "Please enter a valid Airbnb link.",
   },
 
   // ─── Property Details ───────────────────────────────────────────
@@ -313,6 +323,7 @@ const en = {
     priceHint: "Price per person per night. Contact for further details.",
     similarTitle: "Similar Listings",
     sendMessage: "Send Message",
+    viewOnAirbnb: "View on Airbnb",
   },
 
   // ─── Messages / Chat ───────────────────────────────────────────

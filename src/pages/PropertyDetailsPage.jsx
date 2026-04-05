@@ -20,6 +20,7 @@ import {
 } from "../utils/experience.js";
 import { toSlug } from "../utils/slug.js";
 import { FEATURE_ICONS } from "../utils/listingFeatures.js";
+import airbnbLogo from "../assets/airbnb-tile.svg";
 
 export default function PropertyDetailsPage({ user, onLogout, onUpdateUser, experience = "villas" }) {
   const { id, slug } = useParams();
@@ -394,6 +395,17 @@ export default function PropertyDetailsPage({ user, onLogout, onUpdateUser, expe
                           </svg>
                         </a>
                       )}
+                      {post.hasAirbnb && post.airbnbUrl && (
+                        <a
+                          href={post.airbnbUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="detail-page__airbnb-icon"
+                          aria-label={t("details.viewOnAirbnb")}
+                        >
+                          <img src={airbnbLogo} alt="" aria-hidden="true" />
+                        </a>
+                      )}
                     </div>
                     <p className="detail-page__booking-hint">{t("details.priceHint")}</p>
                   </div>
@@ -461,13 +473,25 @@ export default function PropertyDetailsPage({ user, onLogout, onUpdateUser, expe
                       <ChatButton
                         listingId={post.id}
                         listingTitle={post.title}
-                        ownerId={post.userId}
+                        ownerId={post.userId || post.ownerUid || post.createdByUid}
                         ownerName={post.author || post.createdBy || ownerFallback}
                         currentUser={user}
                         size="lg"
                         onNavigate={(conversationId) => navigate(`/messages/${conversationId}`)}
                       />
                     </div>
+                    {post.hasAirbnb && post.airbnbUrl && (
+                      <a
+                        href={post.airbnbUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="airbnb-btn"
+                        aria-label={t("details.viewOnAirbnb")}
+                      >
+                        <img src={airbnbLogo} alt="" width="22" height="22" className="airbnb-btn__icon" aria-hidden="true" />
+                        {t("details.viewOnAirbnb")}
+                      </a>
+                    )}
                     <button className="btn btn--ghost btn--full" onClick={() => navigate(getExperienceCatalogPath(experienceKey))}>
                       <Icon n="arrow-left" /> {t(`${expKey}.backLabel`)}
                     </button>
@@ -537,6 +561,17 @@ export default function PropertyDetailsPage({ user, onLogout, onUpdateUser, expe
                           </svg>
                         </a>
                       )}
+                      {post.hasAirbnb && post.airbnbUrl && (
+                        <a
+                          href={post.airbnbUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="detail-page__airbnb-icon"
+                          aria-label={t("details.viewOnAirbnb")}
+                        >
+                          <img src={airbnbLogo} alt="" aria-hidden="true" />
+                        </a>
+                      )}
                     </div>
                     <p className="detail-page__booking-hint">{t("details.priceHint")}</p>
                   </div>
@@ -574,13 +609,25 @@ export default function PropertyDetailsPage({ user, onLogout, onUpdateUser, expe
                       <ChatButton
                         listingId={post.id}
                         listingTitle={post.title}
-                        ownerId={post.userId}
+                        ownerId={post.userId || post.ownerUid || post.createdByUid}
                         ownerName={post.author || post.createdBy || ownerFallback}
                         currentUser={user}
                         size="lg"
                         onNavigate={(conversationId) => navigate(`/messages/${conversationId}`)}
                       />
                     </div>
+                    {post.hasAirbnb && post.airbnbUrl && (
+                      <a
+                        href={post.airbnbUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="airbnb-btn"
+                        aria-label={t("details.viewOnAirbnb")}
+                      >
+                        <img src={airbnbLogo} alt="" width="22" height="22" className="airbnb-btn__icon" aria-hidden="true" />
+                        {t("details.viewOnAirbnb")}
+                      </a>
+                    )}
                     <button className="btn btn--ghost btn--full" onClick={() => navigate(getExperienceCatalogPath(experienceKey))}>
                       <Icon n="arrow-left" /> {t(`${expKey}.backLabel`)}
                     </button>

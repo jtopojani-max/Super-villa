@@ -148,6 +148,8 @@ const toListing = (snapshotDoc) => {
     address: data.address || "",
     city: data.city || "",
     country: data.country || "",
+    hasAirbnb: Boolean(data.hasAirbnb),
+    airbnbUrl: data.airbnbUrl || null,
   };
 };
 

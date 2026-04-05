@@ -175,6 +175,8 @@ export const createPost = async (payload) => {
     companyName: (payload.companyName || "").trim(),
     isPremium: premiumPayload.isPremium,
     premiumOrder: premiumPayload.premiumOrder,
+    hasAirbnb: Boolean(payload.hasAirbnb),
+    airbnbUrl: payload.hasAirbnb ? (payload.airbnbUrl || "").trim() : null,
   });
 
   // Save location data to posts_private separately (Cloud Function doesn't handle these)
@@ -284,6 +286,8 @@ export const approvePost = async (postId) => {
     street: postData.street || "",
     postalCode: postData.postalCode || "",
     placeType: postData.placeType || "",
+    hasAirbnb: Boolean(postData.hasAirbnb),
+    airbnbUrl: postData.airbnbUrl || null,
   });
 
   return { success: true, sortOrder: nextSort };
@@ -446,6 +450,8 @@ export const updatePost = async (postId, payload) => {
       whatsapp: (payload.whatsapp || "").replace(/[^\d+]/g, ""),
       features: Array.isArray(payload.features) ? payload.features : [],
       companyName: (payload.companyName || "").trim(),
+      hasAirbnb: Boolean(payload.hasAirbnb),
+      airbnbUrl: payload.hasAirbnb ? (payload.airbnbUrl || "").trim() : null,
       lat: payload.lat || null,
       lng: payload.lng || null,
       address: (payload.address || "").trim(),
