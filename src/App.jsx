@@ -1,6 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import CSS from "./styles.js";
 import { getUser, setUser } from "./utils/storage.js";
 import { auth, authPersistenceReady } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -27,18 +26,22 @@ const AUTH_LOADING_ICONS = [
   { id: "verified", file: "mdi--verified-user.svg", delay: "0.3s" },
 ];
 
-function RequireAuth({ user, children }) {
+function RequireAuth({ user, authVerifying, children }) {
+  // While Firebase is still verifying the session, don't redirect yet.
+  if (authVerifying) return null;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
-function RequireAdmin({ user, children }) {
+function RequireAdmin({ user, authVerifying, children }) {
+  if (authVerifying) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "admin") return <Navigate to="/" replace />;
   return children;
 }
 
-function AuthOnly({ user, children }) {
+function AuthOnly({ user, authVerifying, children }) {
+  if (authVerifying) return null;
   if (user) return <Navigate to="/" replace />;
   return children;
 }
@@ -85,7 +88,9 @@ export default function App() {
 function AppInner() {
   const { t } = useLanguage();
   const [user, setUserState] = useState(getUser);
-  const [authLoading, setAuthLoading] = useState(true);
+  // authVerifying: true while Firebase is confirming the session in the background.
+  // We render immediately with the cached user and only block protected routes until verified.
+  const [authVerifying, setAuthVerifying] = useState(true);
 
   const routerNavigate = useNavigate();
   const location = useLocation();
@@ -116,7 +121,7 @@ function AppInner() {
         if (!firebaseUser) {
           setUser(null);
           setUserState(null);
-          setAuthLoading(false);
+          setAuthVerifying(false);
           return;
         }
 
@@ -124,7 +129,7 @@ function AppInner() {
           await signOut(auth);
           setUser(null);
           setUserState(null);
-          setAuthLoading(false);
+          setAuthVerifying(false);
           return;
         }
 
@@ -167,7 +172,7 @@ function AppInner() {
           setUser(fallbackUser);
           setUserState(fallbackUser);
         } finally {
-          setAuthLoading(false);
+          setAuthVerifying(false);
         }
       });
     };
@@ -195,15 +200,6 @@ function AppInner() {
     onUpdateUser: handleUpdateUser,
   };
 
-  if (authLoading) {
-    return (
-      <>
-        <style>{CSS}</style>
-        <AuthLoader label={t("meta.verifyingSession")} />
-      </>
-    );
-  }
-
   const withNavbarSpace =
     displayLocation.pathname === "/villas" ||
     displayLocation.pathname === "/apartments" ||
@@ -214,7 +210,6 @@ function AppInner() {
 
   return (
     <>
-      <style>{CSS}</style>
       <ScrollToTop pathname={displayLocation.pathname} />
 
       <div className={withNavbarSpace ? "with-navbar-space" : ""}>
@@ -234,7 +229,7 @@ function AppInner() {
             <Route
               path="/login"
               element={
-                <AuthOnly user={user}>
+                <AuthOnly user={user} authVerifying={authVerifying}>
                   <LoginPage onLogin={shared.onUpdateUser} />
                 </AuthOnly>
               }
@@ -242,7 +237,7 @@ function AppInner() {
             <Route
               path="/register"
               element={
-                <AuthOnly user={user}>
+                <AuthOnly user={user} authVerifying={authVerifying}>
                   <RegisterPage onLogin={shared.onUpdateUser} />
                 </AuthOnly>
               }
@@ -250,7 +245,7 @@ function AppInner() {
             <Route
               path="/profile"
               element={
-                <RequireAuth user={user}>
+                <RequireAuth user={user} authVerifying={authVerifying}>
                   <ProfilePage {...shared} />
                 </RequireAuth>
               }
@@ -258,7 +253,7 @@ function AppInner() {
             <Route
               path="/create"
               element={
-                <RequireAuth user={user}>
+                <RequireAuth user={user} authVerifying={authVerifying}>
                   <CreatePostPage {...shared} />
                 </RequireAuth>
               }
@@ -266,7 +261,7 @@ function AppInner() {
             <Route
               path="/edit-villa/:id"
               element={
-                <RequireAuth user={user}>
+                <RequireAuth user={user} authVerifying={authVerifying}>
                   <EditVilla {...shared} />
                 </RequireAuth>
               }
@@ -274,7 +269,7 @@ function AppInner() {
             <Route
               path="/messages"
               element={
-                <RequireAuth user={user}>
+                <RequireAuth user={user} authVerifying={authVerifying}>
                   <MessagesPage {...shared} />
                 </RequireAuth>
               }
@@ -282,7 +277,7 @@ function AppInner() {
             <Route
               path="/messages/:conversationId"
               element={
-                <RequireAuth user={user}>
+                <RequireAuth user={user} authVerifying={authVerifying}>
                   <MessagesPage {...shared} />
                 </RequireAuth>
               }
@@ -292,7 +287,7 @@ function AppInner() {
             <Route
               path="/admin"
               element={
-                <RequireAdmin user={user}>
+                <RequireAdmin user={user} authVerifying={authVerifying}>
                   <AdminDashboardPage user={user} onUpdateUser={shared.onUpdateUser} />
                 </RequireAdmin>
               }
